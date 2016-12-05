@@ -1,0 +1,19 @@
+node_modules/
+
+# Logfile
+log.txt
+
+# Editor temps
+*~
+
+# Tarball
+*.tar*
+*.zip
+
+# Vi swap files
+*.sw?
+
+# patch(1) remnants
+*.orig
+*.rej
+
