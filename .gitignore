@@ -3,6 +3,9 @@ node_modules/
 # Logfile
 log.txt
 
+# proxychains.conf
+proxychains.conf
+
 # Editor temps
 *~
 
