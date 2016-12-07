@@ -1,6 +1,7 @@
 'use strict';
 const views = require('co-views');
 const parse = require('co-body');
+const Messages = require('../models/messages');
 
 const render = views(__dirname + '/../views', {
   map: { html: 'swig' }
@@ -14,6 +15,9 @@ module.exports.home = function *home(ctx) {
 };
 
 module.exports.chatLogHandler = function *(room, date) {
+	Messages.get({}, (docs) => {
+		console.log(docs);
+	});
 }
 
 module.exports.chatHandler = function *(room, date) {

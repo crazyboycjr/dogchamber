@@ -1,0 +1,9 @@
+{
+	"baseurl": "http://localhost:3000",
+	
+	"mongo": {
+		"host": "localhost",
+		"port": 27017,
+		"database": "dogchamber"
+	}
+}
