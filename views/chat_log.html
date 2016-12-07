@@ -1,13 +1,243 @@
 {% extends "base.html" %}
 
 {% block content %}
-
 {% include "navbar.html" %}
+
+<div class="container" id="chatlog">
+<div class="row">
+	<div class="col-md-12">
+		<div class="text-center" v-show="!loaded">
+			<h3><i class="glyphicon glyphicon-refresh"></i> Loading ...</h3>
+		</div>
+		<!--TODO change the default fetchMore limit-->
+		<div class="text-center" v-show="(loaded && startID !== 0)">
+			<span class="btn btn-success" @click="fetchMore(1)">Load More</span>
+		</div>
+		{% raw %}
+		<ul id="logs" v-show="loaded">
+			<li class="row" data-id="{{msg.msg_id}}" v-for="msg in msgs" track-by="msg_id">
+				<span class="nickname col-xs-6 nick-color-{{msg.sender | colorNum}}">{{msg.sender}}</span>
+				<span class="time col-xs-6 text-right">{{msg.time}}</span>
+				<span class="col-xs-12">
+					<span class="content" data-msg-type="{{msg.mtype}}">
+						<span v-if="msg.mtype === 'text'">{{{msg.content | polish}}}</span>
+						<img />
+						<audio /></audio>
+						<video /></video>
+						<video /></video>
+					</span>
+				</span>
+				<span class="msg-channel col-xs-12 text-right">
+					via {{msg.channel}}
+				</span>
+			</li>
+		</ul>
+		{% endraw %}
+	</div>
+</div>
+
+<div id="chatbar">
+<div class="container">
+	<div class="join-chat">
+		<form class="form-inline">
+			<div class="form-group">
+				<label for="my-nickname">Nickname</label>
+				<input type="text" class="form-control" />
+			</div>
+			<span class="btn btn-primary"> Join Chat </span>
+		</form>
+	</div>
+	<div class="send-text">
+		<form>
+			<div class="form-group">
+				<label class="sr-only" for="my-msg-text"></label>
+				<div class="input-group">
+					<span class="input-group-addon"></span>
+					<input type="text" class="form-control" />
+				</div>
+			</div>
+			<span class="btn btn-primary"> Send </span>
+			<a href="#" class="btn btn-default"> Picture </a>
+			<span class="btn btn-default"> Reset Nickname </span>
+		</form>
+	</div>
+	<div id="footer">
+		<div class="text-center">
+			<span>Thanks to TUNA and <a href="https://github.com/tuna/fishroom">Fishroom</a> </span>|
+			<span>Licensed under MIT</span>
+		</div>
+	</div>
+</div>
+</div>
+
+</div>
 
 {% endblock %}
 
-{% block js %}
+{% block scripts %}
+<script src="//cdn.bootcss.com/blueimp-md5/1.1.1/js/md5.min.js"></script>
+
+<script>
+$(document).ready(() => {
+
+	// TODO change the getcolor function
+	var getColorNum = function() {
+		var cache = {};
+		function getColorNum_(str) {
+			if (cache[str]) {
+				return cache[str];
+			}
+			var frag = parseInt(md5(str).substr(0, 8), 16);
+			return frag & 0x0f;
+		}
+		return getColorNum_;
+	}();
+	
+	Vue.filter('colorNum', function(text){
+		return getColorNum(text);
+	});
+	
+	//Vue.config.delimiters = ['{@','@}'];
+	Vue.filter("polish", (text) => {
+		let urlRe = /https?:\/\/[^\s]+/g;
+		return emojione.toImage(text.replace(/</g, '&lt;')
+									.replace(/>/g, '&gt;')
+									.replace(/"/g, '&quot;')
+									.replace(/(?:\r\n|\r|\n)/g, '<br/>')
+									.replace(urlRe, '<a href="$1">$1</a>'))
+	});
+
+	function fetchLog(limit, lastID) {
+		console.log(arguments[1]);
+		let url = window.location.origin + '/log' + window.location.pathname;
+		let params = {
+			'limit': limit ? limit : 10,
+			'last': lastID ? lastID : ''
+		};
+		params = $.param(params);
+		url += '?' + params;
+		console.log(url);
+		$.ajax({
+			url: url,
+			type: 'GET'
+		})
+		.done((msgs) => {
+			console.log(Array.from(msgs));
+			logData.startID = msgs[0].msg_id;
+			logData.msgs = msgs.concat(logData.msgs);
+			console.log(logData.msgs);
+			console.log(logData.msgs[1].sender);
+			console.log(Array(1,2,3));
+			logData.loaded = true;
+		});
+	}
+	
+	function new_message(msg) {
+		msg.msg_id = logData.currentID++;
+		logData.msgs.push(msg);
+	}
+
+	let logData = {
+		msgs: [],
+		startID: -1,
+		loaded: false,
+		currentID: {{ nextID }}
+	};
+
+	new Vue({
+		el: '#chatlog',
+		data: logData,
+		ready: () => {
+			fetchLog(42);
+		},
+		methods: {
+			fetchMore: () => {
+				fetchLog(42, this.startID);
+			}
+		}
+	});
+});
+</script>
 {% endblock %}
 
 {% block css %}
+<style>
+.container {
+	max-width: 800px;
+}
+#chatlog {
+	padding-top: 80px;
+}
+ul#logs {
+	font-size: 14px;
+	list-style-type: none;
+	font-family: monospace;
+	padding-left: 0;
+	margin-bottom: 240px;
+}
+ul#logs > li {
+	padding-top: 7px;
+	padding-bottom: 7px;
+	line-height: 1.33;
+	border-top: 1px solid #EEE;
+}
+ul#logs > li:hover {
+	background-color: #fafafa;
+}
+ul#logs > li:first-child {
+	border-top: none;
+}
+ul#logs > li > span.time {
+	color: #888;
+}
+ul#logs > li > span.msg-channel {
+	color: #888;
+	font-size: .9em;
+}
+ul#logs > li span.content {
+	font-family: 'Source Han Sans CN', 'WenQuanYi Zen Hei', 'WenQuanYi Micro Hei', 'Heiti SC', 'Hiragino Sans GB', 'STHeiti', '微软雅黑', sans-serif;
+	min-height: 20px;
+}
+ul#logs > li img.thumbnail {
+	margin-top: 5px;
+	max-height: 300px;
+	max-width: 100%;
+}
+ul#logs > li audio.chatroom-audio, ul#logs > li video.chatroom-video  {
+	margin-top: 5px;
+}
+ul#logs > li img.thumbnail.chatroom-sticker {
+	max-width: 200px;
+	border: none;
+}
+{% include "nickcolors.css" %}
+#footer {
+	height: 30px;
+}
+#footer img {
+	max-height: 30px;
+}
+
+#titlebar {
+	position: fixed;
+	top: 0;
+	width: 100%;
+	background: white;
+	z-index: 1000;
+}
+#titlebar > .container {
+	border-bottom: solid 1px #eee;
+}
+#chatbar {
+	//position: fixed;
+	bottom: 0;
+	height: 130px;
+	background: white;
+	width: 100%;
+}
+#chatbar > .container {
+	padding-top: 15px;
+	border-top: solid 1px #eee;
+}
+</style>
 {% endblock %}

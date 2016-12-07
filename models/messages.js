@@ -4,32 +4,14 @@ const MongoClient = require('mongodb').MongoClient;
 const assert = require('assert');
 const config = require('../config.json').mongo;
 
+
 let url = `mongodb://${config.host}:${config.port}/${config.database}`;
-
-const mongoritwo = require('mongoritwo');
-const Model = mongoritwo.Model;
- 
-class Messages extends Model {
-    
-}
- 
-mongoritwo.connect('mongodb://localhost:27017/dogchamber');
-
-Messages.find().then((docs) => {
-	console.log('ff');
-	console.log(docs[0].attributes);
-}, () => {
-	console.log('gg');
-});
-
-
-
-// FIXME XXX
-
+// FIXME XXX 这下面代码可能需要改写
+/*
 class Messages {
 
 	constructor() {
-		/*function connect() {
+		function connect() {
 			return new Promise((resolve, reject) => {
 				MongoClient.connect(url, (err, db) => {
 					if (err)
@@ -44,7 +26,7 @@ class Messages {
 			this.collection = db.collection('messages');
 		}, (err) => {
 			console.log(err);
-		});*/
+		});
 
 	}
 
@@ -59,32 +41,82 @@ class Messages {
 		});
 	}
 }
-
-/*
+*/
 class Messages {
 
 	constructor() {
 	}
 
-	get(cond, cb) {
-		MongoClient.connect(url, (err, db) => {
-			assert(err === null);
-			let collection = db.collection('messages');
-			collection.find(cond).toArray((err, docs) => {
+	get(cond, limit) {
+		return new Promise((resolve, reject) => {
+			MongoClient.connect(url, (err, db) => {
+				if (err)
+					reject(err);
 				assert(err === null);
-				cb(docs);
+				let collection = db.collection('messages');
+				console.log(cond);
+				let cur = collection.find(cond);
+				if (limit)
+					cur = cur.sort([['msg_id', -1]]).limit(limit);
+				cur.toArray((err, docs) => {
+					if (err)
+						reject(err);
+					assert(err === null);
+					resolve(docs.reverse());
+				});
+				db.close();
 			});
 		});
 	}
-
-	save(cond, cb) {
-		MongoClient.connect(url, (err, db) => {
-			assert(err === null);
-			let collection = db.collection('messages');
-			collection.save(cond)
+	
+	distinct(key) {
+		return new Promise((resolve, reject) => {
+			MongoClient.connect(url, (err, db) => {
+				assert(err === null);
+				if (err)
+					reject(err);
+				let collection = db.collection('messages');
+				collection.distinct(key, (err, docs) => {
+					assert(err === null);
+					if (err)
+						reject(err);
+					
+					resolve(docs);
+				});
+				db.close();
+			})
 		});
 	}
-}
+	
+	getMax(cond, key) {
+		return new Promise((resolve, reject) => {
+			MongoClient.connect(url, (err, db) => {
+				assert(err === null);
+				if (err)
+					reject(err);
+				let collection = db.collection('messages');
+				collection.find(cond).sort([[key, -1]]).limit(1).toArray((err, docs) => {
+					assert(err === null);
+					if (err)
+						reject(err);
+					
+					resolve(docs);
+				});
+				db.close();
+			})
+		});
+	}
+/*
+	save(cond) {
+		return new Promise((resolve, reject) => {
+			MongoClient.connect(url, (err, db) => {
+				assert(err === null);
+				let collection = db.collection('messages');
+				collection.save(cond);
+			});
+		});
+	}
 */
+}
 
 module.exports = new Messages();
