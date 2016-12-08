@@ -35,30 +35,33 @@
 		{% endraw %}
 	</div>
 </div>
+</div>
 
 <div id="chatbar">
 <div class="container">
-	<div class="join-chat">
-		<form class="form-inline">
+	<div class="join-chat" v-show="!nickname">
+		<form class="form-inline" @submit="setNickname">
 			<div class="form-group">
 				<label for="my-nickname">Nickname</label>
-				<input type="text" class="form-control" />
+				<input type="text" class="form-control" v-model="nickname_i" />
 			</div>
-			<span class="btn btn-primary"> Join Chat </span>
+			<span class="btn btn-primary" @click="setNickname" :disabled="nickname_i === ''"> Join Chat </span>
 		</form>
 	</div>
-	<div class="send-text">
-		<form>
+	<div class="send-text" v-show="nickname">
+		<form @submit="sendMsg">
 			<div class="form-group">
 				<label class="sr-only" for="my-msg-text"></label>
 				<div class="input-group">
-					<span class="input-group-addon"></span>
-					<input type="text" class="form-control" />
+					{% raw %}
+					<span class="input-group-addon">{{nickname}}</span>
+					{% endraw %}
+					<input type="text" class="form-control" v-model="msg_text" />
 				</div>
 			</div>
-			<span class="btn btn-primary"> Send </span>
+			<span class="btn btn-primary" @click="sendMsg" :disabled="(sendLock||!msg_text.length)"> Send </span>
 			<a href="#" class="btn btn-default"> Picture </a>
-			<span class="btn btn-default"> Reset Nickname </span>
+			<span class="btn btn-default" @click="unSetNickname"> Reset Nickname </span>
 		</form>
 	</div>
 	<div id="footer">
@@ -68,8 +71,6 @@
 		</div>
 	</div>
 </div>
-</div>
-
 </div>
 
 {% endblock %}
@@ -108,14 +109,14 @@ $(document).ready(() => {
 	});
 
 	function fetchLog(limit, lastID) {
-		console.log(arguments[1]);
 		let url = window.location.origin + '/log' + window.location.pathname;
 		let params = {
 			'limit': limit ? limit : 10,
 			'last': lastID ? lastID : ''
 		};
 		params = $.param(params);
-		url += '?' + params;
+		if (params)
+			url += '?' + params;
 		console.log(url);
 		$.ajax({
 			url: url,
@@ -123,25 +124,24 @@ $(document).ready(() => {
 		})
 		.done((msgs) => {
 			console.log(Array.from(msgs));
-			logData.startID = msgs[0].msg_id;
+			if (msgs.length > 0)
+				logData.startID = msgs[0].msg_id;
 			logData.msgs = msgs.concat(logData.msgs);
 			console.log(logData.msgs);
-			console.log(logData.msgs[1].sender);
-			console.log(Array(1,2,3));
 			logData.loaded = true;
 		});
 	}
 	
 	function new_message(msg) {
-		msg.msg_id = logData.currentID++;
+		//msg.msg_id = logData.currentID++;
 		logData.msgs.push(msg);
 	}
 
 	let logData = {
 		msgs: [],
 		startID: -1,
-		loaded: false,
-		currentID: {{ nextID }}
+		loaded: false
+		//currentID: {{ nextID }}
 	};
 
 	new Vue({
@@ -152,10 +152,91 @@ $(document).ready(() => {
 		},
 		methods: {
 			fetchMore: () => {
+				console.log('this.startID', this.startID);
 				fetchLog(42, this.startID);
 			}
 		}
 	});
+	
+	let chatData = {
+		nickname: localStorage.getItem('nickname'),
+		nickname_i: '',
+		msg_text: '',
+		sendLock: false,
+		ws: null
+	};
+	
+	var sendMsg = function() {}
+	function createWebSocket() {
+		let wscheme = document.location.protocol.replace(/^http/g, 'ws'),
+			wshost = '{{ config.websocket.host }}',
+			wsport = {{ config.websocket.port }},
+			wsurl = wscheme + '//' + wshost + ':' + wsport,
+			ws = new WebSocket(wsurl);
+		
+		console.log(wsurl);
+	
+		chatData.ws = ws;
+		ws.onopen = () => {
+			console.log('websocket opend.');
+			//ws.send('{"room": "{{room}}"}');
+		}
+	
+		{% if enable_ws %}
+		ws.onmessage = (ev) => {
+			console.log(ev.data);
+			let msg = JSON.parse(ev.data);
+			new_message(msg);
+			// handle scroll logic
+		}
+		{% endif %}
+		
+		sendMsg = (ev) => {
+			if (chatData.sendLock || chatData.msg_text.length === 0)
+				return;
+			chatData.sendLock = true;
+			let msg = {
+				'sender': chatData.nickname,
+				'content': chatData.msg_text,
+				'room': '{{room}}'
+			};
+			console.log(msg);
+			chatData.ws.send(JSON.stringify(msg));
+			setTimeout(() => {
+				chatData.sendLock = false;
+			}, 500);
+		}
+	
+		ws.onclose = (ev) => {
+			console.log('socket closed', ev);
+			setTimeout(() => {
+				createWebSocket();
+			}, 5000);
+		}
+	}
+	
+	createWebSocket();
+	
+	new Vue({
+		el: '#chatbar',
+		data: chatData,
+		methods: {
+			setNickname: (ev) => {
+				console.log(chatData.nickname_i);
+				if (!chatData.nickname_i)
+					return;
+				chatData.nickname = chatData.nickname_i;
+				localStorage.setItem('nickname', chatData.nickname);
+				ev.preventDefault();
+			},
+			unSetNickname: (ev) => {
+				ev.preventDefault();
+				chatData.nickname = '';
+			},
+			sendMsg: sendMsg
+		}
+	});
+	
 });
 </script>
 {% endblock %}
@@ -229,7 +310,7 @@ ul#logs > li img.thumbnail.chatroom-sticker {
 	border-bottom: solid 1px #eee;
 }
 #chatbar {
-	//position: fixed;
+	position: fixed;
 	bottom: 0;
 	height: 130px;
 	background: white;

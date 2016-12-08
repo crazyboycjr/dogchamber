@@ -106,17 +106,26 @@ class Messages {
 			})
 		});
 	}
-/*
-	save(cond) {
+
+	insert(cond) {
 		return new Promise((resolve, reject) => {
 			MongoClient.connect(url, (err, db) => {
 				assert(err === null);
+				if (err)
+					reject(err);
 				let collection = db.collection('messages');
-				collection.save(cond);
-			});
+				collection.insert(cond, (err, docs) => {
+					assert(err === null);
+					if (err)
+						reject(err);
+					
+					resolve(docs);
+				});
+				db.close();
+			})
 		});
 	}
-*/
+
 }
 
 module.exports = new Messages();

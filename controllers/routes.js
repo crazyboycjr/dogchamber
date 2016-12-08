@@ -56,6 +56,7 @@ function *getNextID(room, date) {
 		'room': room,
 		'date': date
 	}, 'msg_id');
+	// check msg.length > 0
 	return msg[0].msg_id;
 }
 
@@ -69,8 +70,8 @@ module.exports.chatHandler = function *(room, date) {
 	/* fetch rooms */
 	let rooms = yield fetchRooms();
 	console.log(rooms);
-	let nextID = yield getNextID(room, date);
-	console.log(nextID);
+	//let nextID = yield getNextID(room, date);
+	//console.log(nextID);
 	
 	this.body = yield render('chat_log', {
 		'title': room + ' ' + getDate(),
@@ -79,7 +80,8 @@ module.exports.chatHandler = function *(room, date) {
 		'rooms': rooms,
 		'date': date,
 		'dates': dates,
-		'nextID': nextID
+		//'nextID': nextID,
+		'config': config
 	});
 }
 
