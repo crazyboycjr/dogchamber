@@ -29,7 +29,6 @@ function startWsServer() {
 		console.log(data);
 		console.log(data.toString());
 		let msg = JSON.parse(data);
-		console.log(msg);
 		
 		let date = getDate(),
 			time = getTime();
