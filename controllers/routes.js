@@ -27,28 +27,15 @@ module.exports.chatLogHandler = function *(room, date) {
 	let cond = {'date': date}
 	if (query.last)
 		cond['msg_id'] = {'$lt': Number(query.last)};
-	this.body = yield Messages.get(cond, Number(query.limit));
+	this.body = yield (yield Messages).get(cond, Number(query.limit));
 }
 
-// TODO update cache
-let datesCached = false;
-let datesCache = [];
 function *fetchDates() {
-	if (datesCached)
-		return datesCache;
-	datesCached = true;
-	datesCache = yield Messages.distinct('date');
-	return datesCache;
+	return yield (yield Messages).distinct('date');
 }
 
-let roomsCached = false;
-let roomsCache = [];
 function *fetchRooms() {
-	if (roomsCached)
-		return roomsCache;
-	roomsCached = true;
-	roomsCache = yield Messages.distinct('room');
-	return roomsCache;
+	return yield (yield Messages).distinct('room');
 }
 
 function *getNextID(room, date) {
@@ -57,6 +44,8 @@ function *getNextID(room, date) {
 		'date': date
 	}, 'msg_id');
 	// check msg.length > 0
+	if (!msg.length)
+		return 0;
 	return msg[0].msg_id;
 }
 
@@ -65,9 +54,9 @@ module.exports.chatHandler = function *(room, date) {
 	if (date === 'today')
 		date = getDate();
 
-	/* fetch dates */
+	/* fetch distinct dates */
 	let dates = yield fetchDates();
-	/* fetch rooms */
+	/* fetch distinct rooms */
 	let rooms = yield fetchRooms();
 	console.log(rooms);
 	//let nextID = yield getNextID(room, date);
