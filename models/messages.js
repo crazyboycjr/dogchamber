@@ -42,6 +42,15 @@ class Messages {
 		return this.collection.insert(cond);
 	}
 	
+	getNextID(room) {
+		return this.db.collection('counters').findAndModify(
+			{'room': room},
+			[],
+			{'$inc': {'seq': 1}},
+			{upsert: true}
+		);
+	}
+	
 }
 
 module.exports = co(function *() {

@@ -24,7 +24,7 @@ function *getMaxID(room) {
 function startWsServer() {
 
 	let ws = new WebSocketServer({host: wsconfig.host, port: wsconfig.port});
-
+	
 	ws.on('message', (data) => {
 		console.log(data);
 		console.log(data.toString());
@@ -32,13 +32,12 @@ function startWsServer() {
 		
 		let date = getDate(),
 			time = getTime();
-		
-		//FIXME data race here XXX
+
 		co(function *() {
 			let Messages = yield PMessages;
-			let msgs = yield Messages.getMax({'room': msg.room}, 'msg_id');
-			console.log(msgs);
-			let msg_id = !msgs.length ? 0 : msgs[0].msg_id + 1;
+			let ret = yield Messages.getNextID(msg.room);
+			console.log(ret);
+			let msg_id = ret.value.seq;
 			console.log(msg_id);
 			msg = Object.assign({
 				'sender': '',
@@ -57,36 +56,13 @@ function startWsServer() {
 			console.log(msg);
 			yield Messages.insert(msg);
 			ws.broadcast(JSON.stringify(msg));
-		});
-		
-		/*
-		Messages.getMax({'room': msg.room}, 'msg_id').then((msgs) => {
-			if (!msgs.length)
-				msg_id = 0;
-			else
-				msg_id = msgs[0].msg_id + 1;
-			msg = Object.assign({
-				'sender': '',
-				'botmsg': false,
-				'channel': 'web',
-				'content': '',
-				'date': date,
-				'time': time,
-				'media_url': '',
-				'mtype': 'text',
-				'room': '',
-				'msg_id': msg_id,
-				'reply_to': '',
-				'reply_text': ''
-			}, msg);
-			console.log(msg);
-			Messages.insert(msg);
-			ws.broadcast(JSON.stringify(msg));
-		}, (err) => {
+		}).then(() => {}, (err) => {
 			console.log(err);
-		});*/
+		});
 	});
 	ws.on('error', err => Log.log('websocket error', err));
 }
 
 module.exports = startWsServer;
+
+// vim: ts=4 st=4 sw=4
