@@ -15,7 +15,7 @@ function getDate() {
 
 module.exports.home = function *home(ctx) {
 	let room = config.default_room;
-	let url = `/${room}/today`;
+	let url = `/dogchamber/${room}/today`;
 	this.redirect(url);
 };
 

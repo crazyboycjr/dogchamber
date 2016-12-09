@@ -21,10 +21,10 @@
 				<span class="col-xs-12">
 					<span class="content" data-msg-type="{{msg.mtype}}">
 						<span v-if="msg.mtype === 'text'">{{{msg.content | polish}}}</span>
-						<img />
-						<audio /></audio>
-						<video /></video>
-						<video /></video>
+						<!--<img v-if="(msg.mtype === 'photo' || msg.mtype === 'sticker')" class="thumbnail chatroom-{{msg.mtype}}" src="" :src="msg.media_url"/>-->
+						<audio v-if="msg.mtype === 'audio'" class="chatroom-audio" controls><source src='' :src="msg.media_url" /></audio>
+						<video v-if="msg.mtype === 'animation'" class="chatroom-video chatroom-animation" autoplay loop muted><source srr='' :src="msg.media_url" /></video>
+						<video v-if="msg.mtype === 'video'" class="chatroom-video" controls><source src='' :src="msg.media_url" /></video>
 					</span>
 				</span>
 				<span class="msg-channel col-xs-12 text-right">
@@ -109,7 +109,7 @@ $(document).ready(() => {
 	});
 
 	function fetchLog(limit, lastID) {
-		let url = window.location.origin + '/log' + window.location.pathname;
+		let url = window.location.origin + '/log' + '/{{ room }}' + '/{{ date }}'; 
 		let params = {
 			'limit': limit ? limit : 10,
 			'last': lastID ? lastID : ''
