@@ -4,7 +4,7 @@ const wsconfig = require('../config.json').websocket;
 const WebSocketServer = require('../lib/WebSocketServer');
 const Log = require('../lib/log');
 const co = require('co');
-const Messages = require('../models/messages');
+const PMessages = require('../models/messages');
 
 function getDate() {
 	return (new Date).toISOString().slice(0, 10); // like 2016-12-07
@@ -34,8 +34,37 @@ function startWsServer() {
 			time = getTime();
 		
 		//FIXME data race here XXX
+		co(function *() {
+			let Messages = yield PMessages;
+			let msgs = yield Messages.getMax({'room': msg.room}, 'msg_id');
+			console.log(msgs);
+			let msg_id = !msgs.length ? 0 : msgs[0].msg_id + 1;
+			console.log(msg_id);
+			msg = Object.assign({
+				'sender': '',
+				'botmsg': false,
+				'channel': 'web',
+				'content': '',
+				'date': date,
+				'time': time,
+				'media_url': '',
+				'mtype': 'text',
+				'room': '',
+				'msg_id': msg_id,
+				'reply_to': '',
+				'reply_text': ''
+			}, msg);
+			console.log(msg);
+			yield Messages.insert(msg);
+			ws.broadcast(JSON.stringify(msg));
+		});
+		
+		/*
 		Messages.getMax({'room': msg.room}, 'msg_id').then((msgs) => {
-			let msg_id = msgs[0].msg_id + 1;
+			if (!msgs.length)
+				msg_id = 0;
+			else
+				msg_id = msgs[0].msg_id + 1;
 			msg = Object.assign({
 				'sender': '',
 				'botmsg': false,
@@ -55,7 +84,7 @@ function startWsServer() {
 			ws.broadcast(JSON.stringify(msg));
 		}, (err) => {
 			console.log(err);
-		});
+		});*/
 	});
 	ws.on('error', err => Log.log('websocket error', err));
 }
