@@ -34,10 +34,6 @@ class Messages {
 		return this.collection.distinct(key);
 	}
 
-	getMax(cond, key) {
-		return this.collection.find(cond).sort([[key, -1]]).limit(1).toArray();
-	}
-
 	insert(cond) {
 		return this.collection.insert(cond);
 	}

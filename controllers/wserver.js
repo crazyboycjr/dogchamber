@@ -14,13 +14,6 @@ function getTime() {
 	return (new Date).toTimeString().slice(0, 8); // like 18:21:40
 }
 
-function *getMaxID(room) {
-	let msg = yield Messages.getMax({
-		'room': room
-	}, 'msg_id');
-	return msg[0].msg_id;
-}
-
 function startWsServer() {
 
 	let ws = new WebSocketServer({host: wsconfig.host, port: wsconfig.port});
