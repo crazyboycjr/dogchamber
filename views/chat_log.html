@@ -11,7 +11,7 @@
 		</div>
 		<!--TODO change the default fetchMore limit-->
 		<div class="text-center" v-show="(loaded && startID !== 0)">
-			<span class="btn btn-success" @click="fetchMore(1)">Load More</span>
+			<span class="btn btn-success" @click="fetchMore">Load More</span>
 		</div>
 		{% raw %}
 		<ul id="logs" v-show="loaded">
@@ -152,8 +152,8 @@ $(document).ready(() => {
 		},
 		methods: {
 			fetchMore: () => {
-				console.log('this.startID', this.startID);
-				fetchLog(42, this.startID);
+				console.log('this.startID', logData.startID);
+				fetchLog(42, logData.startID);
 			}
 		}
 	});
@@ -169,7 +169,7 @@ $(document).ready(() => {
 	var sendMsg = function() {}
 	function createWebSocket() {
 		let wscheme = document.location.protocol.replace(/^http/g, 'ws'),
-			wshost = '{{ config.websocket.host }}',
+			wshost = document.location.hostname,
 			wsport = {{ config.websocket.port }},
 			wsurl = wscheme + '//' + wshost + ':' + wsport,
 			ws = new WebSocket(wsurl);
