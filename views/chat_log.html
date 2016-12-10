@@ -21,6 +21,7 @@
 				<span class="col-xs-12">
 					<span class="content" data-msg-type="{{msg.mtype}}">
 						<span v-if="msg.mtype === 'text'">{{{msg.content | polish}}}</span>
+						<span v-if="msg.mtype === 'document'">{{{msg.content | polish | downloadable (msg.media_url)}}}</span>
 						<!--<img v-if="(msg.mtype === 'photo' || msg.mtype === 'sticker')" class="thumbnail chatroom-{{msg.mtype}}" src="" :src="msg.media_url"/>-->
 						<audio v-if="msg.mtype === 'audio'" class="chatroom-audio" controls><source src='' :src="msg.media_url" /></audio>
 						<video v-if="msg.mtype === 'animation'" class="chatroom-video chatroom-animation" autoplay loop muted><source srr='' :src="msg.media_url" /></video>
@@ -61,6 +62,7 @@
 			</div>
 			<span class="btn btn-primary" @click="sendMsg" :disabled="(sendLock||!msg_text.length)"> Send </span>
 			<a href="#" class="btn btn-default"> Picture </a>
+			<button class="btn btn-default" data-toggle="modal" data-target="#upload-modal">Upload Files</button>
 			<span class="btn btn-default" @click="unSetNickname"> Reset Nickname </span>
 		</form>
 	</div>
@@ -72,7 +74,21 @@
 	</div>
 </div>
 </div>
-
+<form>
+	<div class="modal fade" id="upload-modal" tabindex="-1" role="dialog" aria-labelledby="modal-label" aria-hidden="true">
+		<div class="modal-dialog modal-lg" role="document">
+			<div class="modal-content">
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+					<h4 class="modal-title" id="modal-label">选择文件上传</h4>
+				</div>
+				<div class="modal-body">
+					<input id="uploadfile" type="file" class="file-loading" multiple data-preview-file-type="text" >
+				</div>
+			</div>
+		</div>
+	</div>
+</form>
 {% endblock %}
 
 {% block scripts %}
@@ -99,13 +115,17 @@ $(document).ready(() => {
 	});
 	
 	//Vue.config.delimiters = ['{@','@}'];
-	Vue.filter("polish", (text) => {
+	Vue.filter('polish', (text) => {
 		let urlRe = /https?:\/\/[^\s]+/g;
 		return emojione.toImage(text.replace(/</g, '&lt;')
 									.replace(/>/g, '&gt;')
 									.replace(/"/g, '&quot;')
 									.replace(/(?:\r\n|\r|\n)/g, '<br/>')
 									.replace(urlRe, '<a href="$1">$1</a>'))
+	});
+
+	Vue.filter('downloadable', (text, media_url) => {
+		return `${text}<a href="${media_url}"><i class="glyphicon glyphicon-download btn-lg"></i></a>`
 	});
 
 	function fetchLog(limit, lastID, shouldScroll) {
@@ -163,7 +183,7 @@ $(document).ready(() => {
 		methods: {
 			fetchMore: (ev, limit) => {
 				console.log('this.startID', logData.startID);
-				fetchLog(limit ? limit : 42, logData.startID, false);
+				fetchLog(limit ? limit : 10, logData.startID, false);
 			}
 		}
 	});
@@ -256,6 +276,39 @@ $(document).ready(() => {
 		}
 	});
 
+	$("#uploadfile").fileinput({
+		language: 'zh',
+		uploadUrl: '/upload/file',
+		//allowedFileExtensions: ['jpg', 'gif', 'png'], //No limit
+		showUpload: true,
+		showCaption: false,
+		browseClass: "btn btn-primary",
+		maxFileSize: 10240, // 10MB
+		maxFileCount: 10,
+		enctype: 'multipart/form-data',
+		validateInitialCount: true,
+		previewFileIcon: '<i class="glyphicon glyphicon-king"></i>',
+		msgFilesTooMany: '一次上传文件数量不要超过10个'
+	});
+	
+	$('#uploadfile').on('fileuploaded', (ev, data, previewId, index) => {
+		console.log('file upload finish.');
+		console.log(ev, data, previewId, index);
+		let filepath = data.response.files[0];
+		let file = data.files[index];
+		let msg = {
+			'media_url': window.location.origin + filepath,
+			'mtype': 'document',
+			'sender': chatData.nickname,
+			'content': file.name,
+			'room': '{{room}}'
+		};
+		console.log(msg);
+		chatData.ws.send(JSON.stringify(msg));
+		//setTimeout(() => {
+		//	$('#upload-modal').modal('hide');
+		//}, 500);
+	});
 });
 </script>
 {% endblock %}
