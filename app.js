@@ -16,6 +16,7 @@ app.use(logger());
 app.use(route.get('/', routes.home));
 app.use(route.get('/log/:room/:date', routes.chatLogHandler));
 app.use(route.get('/dogchamber/:room/:date', routes.chatHandler));
+app.use(route.post('/upload/file', routes.uploadHandler));
 
 // Serve static files
 app.use(serve(path.join(__dirname, 'public')));

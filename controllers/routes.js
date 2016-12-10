@@ -1,6 +1,10 @@
 'use strict';
 const views = require('co-views');
 const parse = require('co-body');
+const busboy = require('co-busboy');
+const os = require('os');
+const fs = require('fs');
+const path = require('path');
 const querystring = require('querystring');
 const Messages = require('../models/messages');
 const config = require('../config');
@@ -72,6 +76,25 @@ module.exports.chatHandler = function *(room, date) {
 		//'nextID': nextID,
 		'config': config
 	});
+}
+
+module.exports.uploadHandler = function *() {
+	let parts = busboy(this, {autoFields: true});
+	let part;
+	let files = [];
+	let uploaddir = path.join(__dirname, '..', 'public', config.uploaddir);
+	while ((part = yield parts)) {
+		//console.log(part);
+		let randname = Math.random().toString();
+		let stream = fs.createWriteStream(path.join(uploaddir, randname));
+		files.push(path.join(config.uploaddir, randname));
+		console.log(part.filename, part.mime, stream.path);
+		part.pipe(stream);
+	}
+	this.status = 200;
+	this.body = {
+		files: files
+	};
 }
 
 // vim: ts=4 st=4 sw=4
