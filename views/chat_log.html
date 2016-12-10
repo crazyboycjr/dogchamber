@@ -49,7 +49,7 @@
 		</form>
 	</div>
 	<div class="send-text" v-show="nickname">
-		<form @submit="sendMsg" action="#">
+		<form @submit="sendMsg">
 			<div class="form-group">
 				<label class="sr-only" for="my-msg-text"></label>
 				<div class="input-group">
@@ -192,6 +192,7 @@ $(document).ready(() => {
 		{% endif %}
 		
 		sendMsg = (ev) => {
+			ev.preventDefault();
 			if (chatData.sendLock || chatData.msg_text.length === 0)
 				return;
 			chatData.sendLock = true;
