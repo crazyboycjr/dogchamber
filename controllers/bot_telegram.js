@@ -7,7 +7,7 @@ const config = require('../config.json');
 const room = config.default_room;
 const TeleBot = require('telebot');
 const bot = new TeleBot(config.botToken);
-
+const chatId = config.botGroup;
 
 function getDate() {
 	return (new Date).toISOString().slice(0, 10); // like 2016-12-07
@@ -19,7 +19,6 @@ function getTime() {
 
 function startBot(ws) {
 
-	console.log("reach here");
 	bot.on(['text', '/*'], (msg, self) => {
 		
 		let date = getDate(),
@@ -55,6 +54,14 @@ function startBot(ws) {
 	bot.connect();
 }
 
-module.exports = startBot;
+function sendToBot(msg) {
+	let parse = 'html';
+	bot.sendMessage(chatId, `<b>${ msg.sender }</b> said in dogchamber: ${ msg.content }`, { parse });
+}
+
+module.exports = {
+	startBot: startBot,
+	sendToBot: sendToBot
+}
 
 // vim: ts=4 st=4 sw=4
