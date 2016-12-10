@@ -22,7 +22,7 @@
 					<span class="content" data-msg-type="{{msg.mtype}}">
 						<span v-if="msg.mtype === 'text'">{{{msg.content | polish}}}</span>
 						<span v-if="msg.mtype === 'document'">{{{msg.content | polish | downloadable (msg.media_url)}}}</span>
-						<!--<img v-if="(msg.mtype === 'photo' || msg.mtype === 'sticker')" class="thumbnail chatroom-{{msg.mtype}}" src="" :src="msg.media_url"/>-->
+						<img v-if="(msg.mtype === 'photo' || msg.mtype === 'sticker' || msg.mtype === 'image')" class="thumbnail chatroom-{{msg.mtype}}" src="" :src="msg.media_url"/>
 						<audio v-if="msg.mtype === 'audio'" class="chatroom-audio" controls><source src='' :src="msg.media_url" /></audio>
 						<video v-if="msg.mtype === 'animation'" class="chatroom-video chatroom-animation" autoplay loop muted><source srr='' :src="msg.media_url" /></video>
 						<video v-if="msg.mtype === 'video'" class="chatroom-video" controls><source src='' :src="msg.media_url" /></video>
@@ -61,20 +61,20 @@
 				</div>
 			</div>
 			<span class="btn btn-primary" @click="sendMsg" :disabled="(sendLock||!msg_text.length)"> Send </span>
-			<a href="#" class="btn btn-default"> Picture </a>
-			<button class="btn btn-default" data-toggle="modal" data-target="#upload-modal">Upload Files</button>
+			<button class="btn btn-default" data-toggle="modal" data-target="#upload-modal" @click="setMedia"> Media </button>
+			<button class="btn btn-default" data-toggle="modal" data-target="#upload-modal" @click="unSetMedia"> Upload Files </button>
 			<span class="btn btn-default" @click="unSetNickname"> Reset Nickname </span>
 		</form>
 	</div>
 	<div id="footer">
 		<div class="text-center">
 			<span>Thanks to TUNA and <a href="https://github.com/tuna/fishroom">Fishroom</a> </span>|
-			<span>Licensed under MIT</span>
+			<span>Licensed under AGPL</span>
 		</div>
 	</div>
 </div>
 </div>
-<form>
+<form id="uploadForm">
 	<div class="modal fade" id="upload-modal" tabindex="-1" role="dialog" aria-labelledby="modal-label" aria-hidden="true">
 		<div class="modal-dialog modal-lg" role="document">
 			<div class="modal-content">
@@ -82,8 +82,12 @@
 					<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
 					<h4 class="modal-title" id="modal-label">选择文件上传</h4>
 				</div>
-				<div class="modal-body">
-					<input id="uploadfile" type="file" class="file-loading" multiple data-preview-file-type="text" >
+				<div class="modal-body" v-show="!isMedia">
+					<input id="uploadfile" type="file" class="file-loading" multiple data-preview-file-type="any">
+				</div>
+				<div class="modal-body" v-show="isMedia">
+					<input id="uploadmedia" type="file" class="file-loading" multiple data-preview-file-type="any">
+				</div>
 				</div>
 			</div>
 		</div>
@@ -92,7 +96,10 @@
 {% endblock %}
 
 {% block scripts %}
+<!--
 <script src="//cdn.bootcss.com/blueimp-md5/1.1.1/js/md5.min.js"></script>
+-->
+<script src="/scripts/md5.min.js"></script>
 
 <script>
 $(document).ready(() => {
@@ -193,6 +200,7 @@ $(document).ready(() => {
 		nickname_i: '',
 		msg_text: '',
 		sendLock: false,
+		isMedia: true,
 		ws: null
 	};
 	
@@ -256,6 +264,10 @@ $(document).ready(() => {
 	
 	createWebSocket();
 	
+	let uploadData = {
+		isMedia: true
+	};
+	
 	new Vue({
 		el: '#chatbar',
 		data: chatData,
@@ -272,11 +284,24 @@ $(document).ready(() => {
 				ev.preventDefault();
 				chatData.nickname = '';
 			},
-			sendMsg: sendMsg
+			sendMsg: sendMsg,
+			setMedia: (ev) => {
+				uploadData.isMedia = true;
+				console.log(uploadData.isMedia);
+			},
+			unSetMedia: (ev) => {
+				uploadData.isMedia = false;
+				console.log(uploadData.isMedia);
+			}
 		}
 	});
+	
+	new Vue({
+		el: '#uploadForm',
+		data: uploadData
+	});
 
-	$("#uploadfile").fileinput({
+	let uploadOption = {
 		language: 'zh',
 		uploadUrl: '/upload/file',
 		//allowedFileExtensions: ['jpg', 'gif', 'png'], //No limit
@@ -289,25 +314,34 @@ $(document).ready(() => {
 		validateInitialCount: true,
 		previewFileIcon: '<i class="glyphicon glyphicon-king"></i>',
 		msgFilesTooMany: '一次上传文件数量不要超过10个'
-	});
+	};
 	
-	$('#uploadfile').on('fileuploaded', (ev, data, previewId, index) => {
+	$("#uploadfile").fileinput(uploadOption);
+	$("#uploadmedia").fileinput(uploadOption);
+	
+	function finishUpload(ev, data, previewId, index, isMedia) {
 		console.log('file upload finish.');
 		console.log(ev, data, previewId, index);
 		let filepath = data.response.files[0];
 		let file = data.files[index];
+		console.log(file.type);
 		let msg = {
 			'media_url': window.location.origin + filepath,
-			'mtype': 'document',
+			'mtype': isMedia ? file.type.split('/')[0] : 'document',
 			'sender': chatData.nickname,
 			'content': file.name,
 			'room': '{{room}}'
 		};
 		console.log(msg);
 		chatData.ws.send(JSON.stringify(msg));
-		//setTimeout(() => {
-		//	$('#upload-modal').modal('hide');
-		//}, 500);
+	}
+	
+	$('#uploadfile').on('fileuploaded', (ev, data, previewId, index) => {
+		finishUpload(ev, data, previewId, index, false);
+	});
+	
+	$('#uploadmedia').on('fileuploaded', (ev, data, previewId, index) => {
+		finishUpload(ev, data, previewId, index, true);
 	});
 });
 </script>
