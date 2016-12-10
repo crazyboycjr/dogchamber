@@ -14,7 +14,7 @@
 			<span class="btn btn-success" @click="fetchMore">Load More</span>
 		</div>
 		{% raw %}
-		<ul id="logs" v-show="loaded" v-sticky-scroll>
+		<ul id="logs" v-show="loaded">
 			<li class="row" data-id="{{msg.msg_id}}" v-for="msg in msgs" track-by="msg_id">
 				<span class="nickname col-xs-6 nick-color-{{msg.sender | colorNum}}">{{msg.sender}}</span>
 				<span class="time col-xs-6 text-right">{{msg.time}}</span>
@@ -108,7 +108,7 @@ $(document).ready(() => {
 									.replace(urlRe, '<a href="$1">$1</a>'))
 	});
 
-	function fetchLog(limit, lastID) {
+	function fetchLog(limit, lastID, shouldScroll) {
 		let url = window.location.origin + '/log' + '/{{ room }}' + '/{{ date }}'; 
 		let params = {
 			'limit': limit ? limit : 10,
@@ -129,6 +129,15 @@ $(document).ready(() => {
 			logData.msgs = msgs.concat(logData.msgs);
 			console.log(logData.msgs);
 			logData.loaded = true;
+			
+			if (shouldScroll) {
+				setTimeout(() => {
+					window.scrollTo(0, document.body.scrollHeight);
+				}, 300);
+				window.shouldScroll = true;
+			} else {
+				window.shouldScroll = false;
+			}
 		});
 	}
 	
@@ -151,9 +160,9 @@ $(document).ready(() => {
 			fetchLog(42);
 		},
 		methods: {
-			fetchMore: () => {
+			fetchMore: (limit) => {
 				console.log('this.startID', logData.startID);
-				fetchLog(42, logData.startID);
+				fetchLog(limit ? limit : 42, logData.startID, false);
 			}
 		}
 	});
@@ -187,7 +196,15 @@ $(document).ready(() => {
 			console.log(ev.data);
 			let msg = JSON.parse(ev.data);
 			new_message(msg);
-			// handle scroll logic
+			
+			var b = document.body, d = document.documentElement;
+			console.log(b.scrollHeight, window.scrollY, d.clientHeight);
+			if (b.scrollHeight - (window.scrollY + d.clientHeight) < 400) {
+				window.shouldScroll = true;
+				window.scrollTo(0, b.scrollHeight);
+			} else {
+				window.shouldScroll = false;
+			}
 		}
 		{% endif %}
 		
@@ -237,7 +254,7 @@ $(document).ready(() => {
 			sendMsg: sendMsg
 		}
 	});
-	
+
 });
 </script>
 {% endblock %}
