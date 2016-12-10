@@ -8,6 +8,7 @@ const koa = require('koa');
 const path = require('path');
 const app = module.exports = koa();
 const startWsServer = require('./controllers/wserver');
+const startBot = require('./controllers/bot_telegram.js');
 
 // Logger
 app.use(logger());
@@ -19,8 +20,8 @@ app.use(route.get('/dogchamber/:room/:date', routes.chatHandler));
 // Serve static files
 app.use(serve(path.join(__dirname, 'public')));
 
-startWsServer();
-
+let ws = startWsServer();
+startBot(ws);
 // Compress
 app.use(compress());
 

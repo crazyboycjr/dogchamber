@@ -1,10 +1,13 @@
 'use strict';
 
-const wsconfig = require('../config.json').websocket;
-const WebSocketServer = require('../lib/WebSocketServer');
 const Log = require('../lib/log');
 const co = require('co');
 const PMessages = require('../models/messages');
+const config = require('../config.json');
+const room = config.default_room;
+const TeleBot = require('telebot');
+const bot = new TeleBot(config.botToken);
+
 
 function getDate() {
 	return (new Date).toISOString().slice(0, 10); // like 2016-12-07
@@ -14,38 +17,34 @@ function getTime() {
 	return (new Date).toTimeString().slice(0, 8); // like 18:21:40
 }
 
-function startWsServer() {
+function startBot(ws) {
 
-	let ws = new WebSocketServer({host: wsconfig.host, port: wsconfig.port});
-	
-	ws.on('message', (data) => {
-		console.log(data);
-		console.log(data.toString());
-		let msg = JSON.parse(data);
+	console.log("reach here");
+	bot.on(['text', '/*'], (msg, self) => {
 		
 		let date = getDate(),
 			time = getTime();
 
 		co(function *() {
 			let Messages = yield PMessages;
-			let ret = yield Messages.getNextID(msg.room);
+			let ret = yield Messages.getNextID(room);
 			console.log(ret);
 			let msg_id = ret.value.seq;
 			console.log(msg_id);
-			msg = Object.assign({
-				'sender': '',
-				'botmsg': false,
-				'channel': 'web',
-				'content': '',
+			msg = {
+				'sender': msg.from.first_name,
+				'botmsg': true,
+				'channel': 'telegram',
+				'content': msg.text,
 				'date': date,
 				'time': time,
 				'media_url': '',
 				'mtype': 'text',
-				'room': '',
+				'room': room,
 				'msg_id': msg_id,
 				'reply_to': '',
 				'reply_text': ''
-			}, msg);
+			};
 			console.log(msg);
 			yield Messages.insert(msg);
 			ws.broadcast(JSON.stringify(msg));
@@ -53,10 +52,9 @@ function startWsServer() {
 			console.log(err);
 		});
 	});
-	ws.on('error', err => Log.log('websocket error', err));
-	return ws;
+	bot.connect();
 }
 
-module.exports = startWsServer;
+module.exports = startBot;
 
 // vim: ts=4 st=4 sw=4
