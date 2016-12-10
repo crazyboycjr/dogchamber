@@ -13,6 +13,8 @@
 		"host": "0.0.0.0",
 		"port": 4000
 	},
-	
-	"uploaddir": "/uploads"
+
+	"uploaddir": "/uploads",
+
+	"botToken": "216686155:AAFetvlni7xVvV__4oycJwTYXoW5n5j9TYs"
 }
