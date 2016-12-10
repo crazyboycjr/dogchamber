@@ -14,7 +14,7 @@
 			<span class="btn btn-success" @click="fetchMore">Load More</span>
 		</div>
 		{% raw %}
-		<ul id="logs" v-show="loaded">
+		<ul id="logs" v-show="loaded" v-sticky-scroll>
 			<li class="row" data-id="{{msg.msg_id}}" v-for="msg in msgs" track-by="msg_id">
 				<span class="nickname col-xs-6 nick-color-{{msg.sender | colorNum}}">{{msg.sender}}</span>
 				<span class="time col-xs-6 text-right">{{msg.time}}</span>
@@ -49,14 +49,14 @@
 		</form>
 	</div>
 	<div class="send-text" v-show="nickname">
-		<form @submit="sendMsg">
+		<form @submit.prevent="sendMsg">
 			<div class="form-group">
 				<label class="sr-only" for="my-msg-text"></label>
 				<div class="input-group">
 					{% raw %}
 					<span class="input-group-addon">{{nickname}}</span>
 					{% endraw %}
-					<input type="text" class="form-control" v-model="msg_text" />
+					<input type="text" class="form-control" v-model.trim="msg_text" />
 				</div>
 			</div>
 			<span class="btn btn-primary" @click="sendMsg" :disabled="(sendLock||!msg_text.length)"> Send </span>
@@ -192,7 +192,6 @@ $(document).ready(() => {
 		{% endif %}
 		
 		sendMsg = (ev) => {
-			ev.preventDefault();
 			if (chatData.sendLock || chatData.msg_text.length === 0)
 				return;
 			chatData.sendLock = true;
