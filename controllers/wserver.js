@@ -5,6 +5,7 @@ const WebSocketServer = require('../lib/WebSocketServer');
 const Log = require('../lib/log');
 const co = require('co');
 const PMessages = require('../models/messages');
+const sendToBot = require('./bot_telegram.js').sendToBot;
 
 function getDate() {
 	return (new Date).toISOString().slice(0, 10); // like 2016-12-07
@@ -49,6 +50,7 @@ function startWsServer() {
 			console.log(msg);
 			yield Messages.insert(msg);
 			ws.broadcast(JSON.stringify(msg));
+			sendToBot(msg);
 		}).then(() => {}, (err) => {
 			console.log(err);
 		});
