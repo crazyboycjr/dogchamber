@@ -22,7 +22,7 @@
 					<span class="content" data-msg-type="{{msg.mtype}}">
 						<span v-if="msg.mtype === 'text'">{{{msg.content | polish}}}</span>
 						<span v-if="msg.mtype === 'document'">{{{msg.content | polish | downloadable (msg.media_url)}}}</span>
-						<img v-if="(msg.mtype === 'photo' || msg.mtype === 'sticker' || msg.mtype === 'image')" class="thumbnail chatroom-{{msg.mtype}}" src="" :src="msg.media_url"/>
+						<img v-if="(msg.mtype === 'photo' || msg.mtype === 'sticker' || msg.mtype === 'image')" class="thumbnail chatroom-{{msg.mtype}}" src="" :src="msg.media_url" @load="resrcLoaded"/>
 						<audio v-if="msg.mtype === 'audio'" class="chatroom-audio" controls><source src='' :src="msg.media_url" /></audio>
 						<video v-if="msg.mtype === 'animation'" class="chatroom-video chatroom-animation" autoplay loop muted><source srr='' :src="msg.media_url" /></video>
 						<video v-if="msg.mtype === 'video'" class="chatroom-video" controls><source src='' :src="msg.media_url" /></video>
@@ -61,8 +61,8 @@
 				</div>
 			</div>
 			<span class="btn btn-primary" @click="sendMsg" :disabled="(sendLock||!msg_text.length)"> Send </span>
-			<button class="btn btn-default" data-toggle="modal" data-target="#upload-modal" @click="setMedia"> Media </button>
-			<button class="btn btn-default" data-toggle="modal" data-target="#upload-modal" @click="unSetMedia"> Upload Files </button>
+			<a class="btn btn-default" data-toggle="modal" data-target="#upload-modal" @click="setMedia"> Media </a>
+			<a class="btn btn-default" data-toggle="modal" data-target="#upload-modal" @click="unSetMedia"> Upload Files </a>
 			<span class="btn btn-default" @click="unSetNickname"> Reset Nickname </span>
 		</form>
 	</div>
@@ -191,6 +191,9 @@ $(document).ready(() => {
 			fetchMore: (ev, limit) => {
 				console.log('this.startID', logData.startID);
 				fetchLog(limit ? limit : 10, logData.startID, false);
+			},
+			resrcLoaded: (ev) => {
+				window.scrollTo(0, document.body.scrollHeight);
 			}
 		}
 	});
@@ -287,11 +290,11 @@ $(document).ready(() => {
 			sendMsg: sendMsg,
 			setMedia: (ev) => {
 				uploadData.isMedia = true;
-				console.log(uploadData.isMedia);
+				ev.preventDefault();
 			},
 			unSetMedia: (ev) => {
 				uploadData.isMedia = false;
-				console.log(uploadData.isMedia);
+				ev.preventDefault();
 			}
 		}
 	});
