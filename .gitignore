@@ -7,6 +7,9 @@ log.txt
 # proxychains.conf
 proxychains.conf
 
+# uploads files
+public/uploads/
+
 # Editor temps
 *~
 
