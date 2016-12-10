@@ -114,6 +114,7 @@ $(document).ready(() => {
 			'limit': limit ? limit : 10,
 			'last': lastID ? lastID : ''
 		};
+		console.log(params);
 		params = $.param(params);
 		if (params)
 			url += '?' + params;
@@ -160,7 +161,7 @@ $(document).ready(() => {
 			fetchLog(42);
 		},
 		methods: {
-			fetchMore: (limit) => {
+			fetchMore: (ev, limit) => {
 				console.log('this.startID', logData.startID);
 				fetchLog(limit ? limit : 42, logData.startID, false);
 			}
