@@ -21,7 +21,8 @@
 				<span class="col-xs-12">
 					<span class="content" data-msg-type="{{msg.mtype}}">
 						<span v-if="msg.mtype === 'text'">{{{msg.content | polish}}}</span>
-						<!--<img v-if="(msg.mtype === 'photo' || msg.mtype === 'sticker')" class="thumbnail chatroom-{{msg.mtype}}" src="" :src="msg.media_url"/>-->
+						<span v-if="msg.mtype === 'document'">{{{msg.content | polish | downloadable (msg.media_url)}}}</span>
+						<img v-if="(msg.mtype === 'photo' || msg.mtype === 'sticker' || msg.mtype === 'image')" class="thumbnail chatroom-{{msg.mtype}}" src="" :src="msg.media_url" @load="resrcLoaded"/>
 						<audio v-if="msg.mtype === 'audio'" class="chatroom-audio" controls><source src='' :src="msg.media_url" /></audio>
 						<video v-if="msg.mtype === 'animation'" class="chatroom-video chatroom-animation" autoplay loop muted><source srr='' :src="msg.media_url" /></video>
 						<video v-if="msg.mtype === 'video'" class="chatroom-video" controls><source src='' :src="msg.media_url" /></video>
@@ -60,23 +61,45 @@
 				</div>
 			</div>
 			<span class="btn btn-primary" @click="sendMsg" :disabled="(sendLock||!msg_text.length)"> Send </span>
-			<a href="#" class="btn btn-default"> Picture </a>
+			<a class="btn btn-default" data-toggle="modal" data-target="#upload-modal" @click="setMedia"> Media </a>
+			<a class="btn btn-default" data-toggle="modal" data-target="#upload-modal" @click="unSetMedia"> Upload Files </a>
 			<span class="btn btn-default" @click="unSetNickname"> Reset Nickname </span>
 		</form>
 	</div>
 	<div id="footer">
 		<div class="text-center">
 			<span>Thanks to TUNA and <a href="https://github.com/tuna/fishroom">Fishroom</a> </span>|
-			<span>Licensed under MIT</span>
+			<span>Licensed under AGPL</span>
 		</div>
 	</div>
 </div>
 </div>
-
+<form id="uploadForm">
+	<div class="modal fade" id="upload-modal" tabindex="-1" role="dialog" aria-labelledby="modal-label" aria-hidden="true">
+		<div class="modal-dialog modal-lg" role="document">
+			<div class="modal-content">
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+					<h4 class="modal-title" id="modal-label">选择文件上传</h4>
+				</div>
+				<div class="modal-body" v-show="!isMedia">
+					<input id="uploadfile" type="file" class="file-loading" multiple data-preview-file-type="any">
+				</div>
+				<div class="modal-body" v-show="isMedia">
+					<input id="uploadmedia" type="file" class="file-loading" multiple data-preview-file-type="any">
+				</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</form>
 {% endblock %}
 
 {% block scripts %}
+<!--
 <script src="//cdn.bootcss.com/blueimp-md5/1.1.1/js/md5.min.js"></script>
+-->
+<script src="/scripts/md5.min.js"></script>
 
 <script>
 $(document).ready(() => {
@@ -99,13 +122,17 @@ $(document).ready(() => {
 	});
 	
 	//Vue.config.delimiters = ['{@','@}'];
-	Vue.filter("polish", (text) => {
+	Vue.filter('polish', (text) => {
 		let urlRe = /https?:\/\/[^\s]+/g;
 		return emojione.toImage(text.replace(/</g, '&lt;')
 									.replace(/>/g, '&gt;')
 									.replace(/"/g, '&quot;')
 									.replace(/(?:\r\n|\r|\n)/g, '<br/>')
 									.replace(urlRe, '<a href="$1">$1</a>'))
+	});
+
+	Vue.filter('downloadable', (text, media_url) => {
+		return `${text}<a href="${media_url}"><i class="glyphicon glyphicon-download btn-lg"></i></a>`
 	});
 
 	function fetchLog(limit, lastID, shouldScroll) {
@@ -163,7 +190,10 @@ $(document).ready(() => {
 		methods: {
 			fetchMore: (ev, limit) => {
 				console.log('this.startID', logData.startID);
-				fetchLog(limit ? limit : 42, logData.startID, false);
+				fetchLog(limit ? limit : 10, logData.startID, false);
+			},
+			resrcLoaded: (ev) => {
+				window.scrollTo(0, document.body.scrollHeight);
 			}
 		}
 	});
@@ -173,6 +203,7 @@ $(document).ready(() => {
 		nickname_i: '',
 		msg_text: '',
 		sendLock: false,
+		isMedia: true,
 		ws: null
 	};
 	
@@ -236,6 +267,10 @@ $(document).ready(() => {
 	
 	createWebSocket();
 	
+	let uploadData = {
+		isMedia: true
+	};
+	
 	new Vue({
 		el: '#chatbar',
 		data: chatData,
@@ -252,10 +287,65 @@ $(document).ready(() => {
 				ev.preventDefault();
 				chatData.nickname = '';
 			},
-			sendMsg: sendMsg
+			sendMsg: sendMsg,
+			setMedia: (ev) => {
+				uploadData.isMedia = true;
+				ev.preventDefault();
+			},
+			unSetMedia: (ev) => {
+				uploadData.isMedia = false;
+				ev.preventDefault();
+			}
 		}
 	});
+	
+	new Vue({
+		el: '#uploadForm',
+		data: uploadData
+	});
 
+	let uploadOption = {
+		language: 'zh',
+		uploadUrl: '/upload/file',
+		//allowedFileExtensions: ['jpg', 'gif', 'png'], //No limit
+		showUpload: true,
+		showCaption: false,
+		browseClass: "btn btn-primary",
+		maxFileSize: 10240, // 10MB
+		maxFileCount: 10,
+		enctype: 'multipart/form-data',
+		validateInitialCount: true,
+		previewFileIcon: '<i class="glyphicon glyphicon-king"></i>',
+		msgFilesTooMany: '一次上传文件数量不要超过10个'
+	};
+	
+	$("#uploadfile").fileinput(uploadOption);
+	$("#uploadmedia").fileinput(uploadOption);
+	
+	function finishUpload(ev, data, previewId, index, isMedia) {
+		console.log('file upload finish.');
+		console.log(ev, data, previewId, index);
+		let filepath = data.response.files[0];
+		let file = data.files[index];
+		console.log(file.type);
+		let msg = {
+			'media_url': window.location.origin + filepath,
+			'mtype': isMedia ? file.type.split('/')[0] : 'document',
+			'sender': chatData.nickname,
+			'content': file.name,
+			'room': '{{room}}'
+		};
+		console.log(msg);
+		chatData.ws.send(JSON.stringify(msg));
+	}
+	
+	$('#uploadfile').on('fileuploaded', (ev, data, previewId, index) => {
+		finishUpload(ev, data, previewId, index, false);
+	});
+	
+	$('#uploadmedia').on('fileuploaded', (ev, data, previewId, index) => {
+		finishUpload(ev, data, previewId, index, true);
+	});
 });
 </script>
 {% endblock %}
@@ -304,6 +394,9 @@ ul#logs > li img.thumbnail {
 	max-width: 100%;
 }
 ul#logs > li audio.chatroom-audio, ul#logs > li video.chatroom-video  {
+	height: 100%;
+	width: 100%;
+	display: block;
 	margin-top: 5px;
 }
 ul#logs > li img.thumbnail.chatroom-sticker {
