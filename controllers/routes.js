@@ -50,7 +50,7 @@ function *getNextID(room, date) {
 }
 
 module.exports.chatHandler = function *(room, date) {
-	let enable_ws = date === 'today';
+	let enable_ws = date === 'today' || date === getDate();
 	if (date === 'today')
 		date = getDate();
 
