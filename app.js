@@ -8,7 +8,7 @@ const koa = require('koa');
 const path = require('path');
 const app = module.exports = koa();
 const startWsServer = require('./controllers/wserver');
-const startBot = require('./controllers/bot_telegram.js').startBot;
+const startBot = require('./controllers/bot_telegram').startBot;
 
 // Logger
 app.use(logger());
