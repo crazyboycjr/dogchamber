@@ -5,7 +5,8 @@ const WebSocketServer = require('../lib/WebSocketServer');
 const Log = require('../lib/log');
 const co = require('co');
 const PMessages = require('../models/messages');
-const sendToBot = require('./bot_telegram.js').sendToBot;
+const sendToBot_msg = require('./bot_telegram').sendToBot_msg;
+const sendToBot_media = require('./bot_telegram').sendToBot_media;
 
 function getDate() {
 	return (new Date).toISOString().slice(0, 10); // like 2016-12-07
@@ -50,7 +51,12 @@ function startWsServer() {
 			console.log(msg);
 			yield Messages.insert(msg);
 			ws.broadcast(JSON.stringify(msg));
-			sendToBot(msg);
+			if (msg.mtype == 'text') {
+				sendToBot_msg(msg);
+			}
+			if (msg.mtype == 'image' || msg.mtype == 'photo' ||  msg.mtype == 'video' || msg.mtype == 'sticker' || msg.mtype ==  'audio') {
+				sendToBot_media(msg);
+			}
 		}).then(() => {}, (err) => {
 			console.log(err);
 		});
