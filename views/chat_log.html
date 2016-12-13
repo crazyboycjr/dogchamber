@@ -8,17 +8,20 @@
 <div class="container" id="chatlog">
 <div class="row">
 	<div class="col-md-12">
-		<div class="text-center" v-show="!loaded">
-			<h3><i class="glyphicon glyphicon-refresh"></i> Loading ...</h3>
-		</div>
-		<div class="text-center" v-show="(loaded && startID !== 0)">
-			<span class="btn btn-success" @click="fetchMore">Load More</span>
-		</div>
+
 		{% raw %}
 		<ul id="logs" class="messages" v-show="loaded">
+			<div class="text-center" v-show="!loaded">
+				<h3><i class="glyphicon glyphicon-refresh"></i> Loading ...</h3>
+			</div>
+			<div class="text-center" v-show="(loaded && startID !== 0)">
+				<span class="btn btn-success" @click="fetchMore">Load More</span>
+			</div>
+			
 			<div class="message_template">
 			
-			<li class="row message right" data-id="{{msg.msg_id}}" v-for="msg in msgs" track-by="msg_id">
+			<li class="row message {{msg.sender | isMe}}" data-id="{{msg.msg_id}}" v-for="msg in msgs" track-by="msg_id">
+				<div class="avatar"></div>
 				<div class="text_wrapper">
 				
 				<span class="nickname col-xs-6 nick-color-{{msg.sender | colorNum}}">{{msg.sender}}</span>
@@ -48,7 +51,7 @@
 </div>
 
 <div id="chatbar">
-<div class="container">
+<div class="container bottom_wrapper">
 	<div class="join-chat" v-show="!nickname">
 		<form class="form-inline" @submit="setNickname">
 			<div class="form-group">
@@ -62,21 +65,26 @@
 		<form @submit.prevent="sendMsg">
 			<div class="form-group">
 				<label class="sr-only" for="my-msg-text"></label>
-				<div class="input-group">
-					{% raw %}
-					<span class="input-group-addon">{{nickname}}</span>
-					{% endraw %}
+				<div>		
 					
-					<div class="">
-					<input type="text" class="form-control" v-model.trim="msg_text" />
+					<div class="message_input_wrapper">
+
+					<input type="text" class="message_input" v-model.trim="msg_text" />
+					</div>
+					<div class="send_message">
+						<div class="icon"></div>
+						<span class="text" @click="sendMsg" :disabled="(sendLock||!msg_text.length||msg_text.length>10000)"> Send </span>
 					</div>
 				</div>
 			</div>
-			<div class="icon"></div>
-			<span class="text btn btn-primary" @click="sendMsg" :disabled="(sendLock||!msg_text.length||msg_text.length>10000)"> Send </span>
-			<a class="btn btn-default" data-toggle="modal" data-target="#upload-modal" @click="setMedia"> Media </a>
-			<a class="btn btn-default" data-toggle="modal" data-target="#upload-modal" @click="unSetMedia"> Files </a>
-			<span class="btn btn-default" @click="unSetNickname"> Reset Nickname </span>
+			
+			{% raw %}
+			<label class="label label-default" style="font-size:100%;"><i class="glyphicon glyphicon-user"></i> {{nickname}}</label>
+			{% endraw %}
+			<span class="btn btn-default" style="border-radius: 50px;" @click="unSetNickname"> Reset Nickname </span>
+			
+			<a class="btn btn-default btn-upload" data-toggle="modal" data-target="#upload-modal" @click="setMedia"><i class="glyphicon glyphicon-picture"></i> Media </a>
+			<a class="btn btn-default btn-upload" data-toggle="modal" data-target="#upload-modal" @click="unSetMedia"><i class="glyphicon glyphicon-file"></i> Files &nbsp; </a>
 		</form>
 	</div>
 	<!--
@@ -151,6 +159,8 @@ $(document).ready(() => {
 		return `${text}<a href="${media_url}"><i class="glyphicon glyphicon-download btn-lg"></i></a>`
 	});
 
+	var $messages = $('.messages');
+
 	function fetchLog(limit, lastID, shouldScroll, shouldDate) {
 		let url = window.location.origin + '/log' + '/{{ room }}';
 		url += shouldDate ? '/{{ date }}' : '/any';
@@ -174,11 +184,14 @@ $(document).ready(() => {
 			logData.msgs = msgs.concat(logData.msgs);
 			console.log(logData.msgs);
 			logData.loaded = true;
+			
+			window.shouldScroll = shouldScroll ? true : false;
 			/*
+			let m = $messages[0];
 			if (shouldScroll) {
-				setTimeout(() => {
+				(() => {
 					window.scrollTo(0, document.body.scrollHeight);
-				}, 300);
+				}, 300)
 				window.shouldScroll = true;
 			} else {
 				window.shouldScroll = false;
@@ -199,13 +212,14 @@ $(document).ready(() => {
 		//currentID: {{ nextID }}
 	};
 
-	var $messages = $('.messages');
-
 	new Vue({
 		el: '#chatlog',
 		data: logData,
 		ready: () => {
-			fetchLog(42, null, null, true);
+			fetchLog(42, null, true, true);
+			setTimeout(() => {
+				$messages.animate({ scrollTop: $messages.prop('scrollHeight') }, 300)
+			}, 1000);
 		},
 		methods: {
 			fetchMore: (ev, limit) => {
@@ -214,7 +228,7 @@ $(document).ready(() => {
 			},
 			resrcLoaded: (ev) => {
 				/*window.scrollTo(0, document.body.scrollHeight);*/
-				$messages.animate({ scrollTop: $messages.prop('scrollHeight') }, 300);
+				//$messages.animate({ scrollTop: $messages.prop('scrollHeight') }, 300);
 			}
 		}
 	});
@@ -227,6 +241,10 @@ $(document).ready(() => {
 		isMedia: true,
 		ws: null
 	};
+	
+	Vue.filter('isMe', (sender) => {
+		return sender === chatData.nickname ? 'right' : 'left';
+	});
 	
 	
 	var sendMsg = function() {}
@@ -251,7 +269,12 @@ $(document).ready(() => {
 			let msg = JSON.parse(ev.data);
 			new_message(msg);
 			
-			$messages.animate({ scrollTop: $messages.prop('scrollHeight') }, 300);
+			
+			var m = $messages[0];
+			console.log(m.scrollHeight, m.scrollTop, m.clientHeight);
+			if (m.scrollHeight - (m.scrollTop + m.clientHeight) < 400) {
+				$messages.animate({ scrollTop: $messages.prop('scrollHeight') }, 300);
+			}
 		}
 		{% endif %}
 		
@@ -270,6 +293,7 @@ $(document).ready(() => {
 			setTimeout(() => {
 				chatData.sendLock = false;
 			}, 500);
+			$messages.animate({ scrollTop: $messages.prop('scrollHeight') }, 300);
 		}
 	
 		ws.onclose = (ev) => {
@@ -367,11 +391,16 @@ $(document).ready(() => {
 
 {% block css %}
 <style>
+.row {
+	margin-right: 0;
+	margin-left: 0;
+}
+
 .container {
 	max-width: 800px;
 }
 #chatlog {
-	padding-top: 80px;
+	padding-top: 60px;
 }
 ul#logs {
 	font-size: 14px;
@@ -385,42 +414,42 @@ ul#logs li {
 	padding-top: 7px;
 	padding-bottom: 7px;
 	line-height: 1.33;
-	border-top: 1px solid #EEE;
+	//border-top: 1px solid #EEE;
 }
-ul#logs  li:hover {
+ul#logs li:hover {
 	background-color: #fafafa;
 }
-ul#logs  li:first-child {
+ul#logs li:first-child {
 	border-top: none;
 }
-ul#logs  li  span.time {
+ul#logs li span.time {
 	color: #888;
 }
-ul#logs li  span.msg-channel {
+ul#logs li span.msg-channel {
 	color: #888;
 	font-size: .9em;
 }
-ul#logs  li span.content {
+ul#logs li span.content {
 	font-family: 'Source Han Sans CN', 'WenQuanYi Zen Hei', 'WenQuanYi Micro Hei', 'Heiti SC', 'Hiragino Sans GB', 'STHeiti', '微软雅黑', sans-serif;
 	min-height: 20px;
 }
-ul#logs > li img.thumbnail {
+ul#logs li img.thumbnail {
 	margin-top: 5px;
 	max-height: 300px;
 	max-width: 100%;
 }
-ul#logs > li audio.chatroom-audio {
+ul#logs li audio.chatroom-audio {
 	margin-top: 5px;
 	width: 100%;
 	display: block;
 }
-ul#logs > li video.chatroom-video  {
+ul#logs li video.chatroom-video  {
 	height: 100%;
 	width: 100%;
 	display: block;
 	margin-top: 5px;
 }
-ul#logs > li img.thumbnail.chatroom-sticker {
+ul#logs li img.thumbnail.chatroom-sticker {
 	max-width: 200px;
 	border: none;
 }
@@ -454,7 +483,6 @@ ul#logs > li img.thumbnail.chatroom-sticker {
 	border-top: solid 1px #eee;
 }
 
-
 * {
   box-sizing: border-box;
 }
@@ -467,7 +495,7 @@ body {
 .chat_window {
   position: absolute;
   width: calc(100% - 20px);
-  max-width: 70%;
+  max-width: 80%;
   height: 100%;
   border-radius: 10px;
   background-color: #fff;
@@ -515,7 +543,7 @@ body {
 .messages {
   position: relative;
   list-style: none;
-  padding: 20px 10px 0 10px;
+  padding: 0px 10px 0 10px;
   margin: 0;
   height: 700px;
   overflow: auto;
@@ -606,7 +634,7 @@ body {
   width: 100%;
   background-color: #fff;
   padding: 20px 20px;
-  position: absolute;
+  //position: absolute;
   bottom: 0;
 }
 .bottom_wrapper .message_input_wrapper {
@@ -622,6 +650,7 @@ body {
   border: none;
   height: 100%;
   box-sizing: border-box;
+  width: 100px;
   width: calc(100% - 40px);
   position: absolute;
   outline-width: 0;
@@ -653,6 +682,12 @@ body {
 
 .message_template {
   //display: none;
+}
+
+.btn-upload {
+	float:right;
+	border-radius: 50px;
+	margin: 2px;
 }
 
 </style>
