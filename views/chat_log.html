@@ -60,7 +60,7 @@
 					<input type="text" class="form-control" v-model.trim="msg_text" />
 				</div>
 			</div>
-			<span class="btn btn-primary" @click="sendMsg" :disabled="(sendLock||!msg_text.length)"> Send </span>
+			<span class="btn btn-primary" @click="sendMsg" :disabled="(sendLock||!msg_text.length||msg_text.length>10000)"> Send </span>
 			<a class="btn btn-default" data-toggle="modal" data-target="#upload-modal" @click="setMedia"> Media </a>
 			<a class="btn btn-default" data-toggle="modal" data-target="#upload-modal" @click="unSetMedia"> Upload Files </a>
 			<span class="btn btn-default" @click="unSetNickname"> Reset Nickname </span>
@@ -135,8 +135,9 @@ $(document).ready(() => {
 		return `${text}<a href="${media_url}"><i class="glyphicon glyphicon-download btn-lg"></i></a>`
 	});
 
-	function fetchLog(limit, lastID, shouldScroll) {
-		let url = window.location.origin + '/log' + '/{{ room }}' + '/{{ date }}'; 
+	function fetchLog(limit, lastID, shouldScroll, shouldDate) {
+		let url = window.location.origin + '/log' + '/{{ room }}';
+		url += shouldDate ? '/{{ date }}' : '/any';
 		let params = {
 			'limit': limit ? limit : 10,
 			'last': lastID ? lastID : ''
@@ -185,7 +186,7 @@ $(document).ready(() => {
 		el: '#chatlog',
 		data: logData,
 		ready: () => {
-			fetchLog(42);
+			fetchLog(42, null, null, true);
 		},
 		methods: {
 			fetchMore: (ev, limit) => {

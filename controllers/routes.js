@@ -29,6 +29,7 @@ module.exports.chatLogHandler = function *(room, date) {
 		date = getDate();
 	console.log(date);
 	let cond = {'room': room};
+	if (date !== 'any')cond['date'] = date;
 	if (query.last)
 		cond['msg_id'] = {'$lt': Number(query.last)};
 	this.body = yield (yield Messages).get(cond, Number(query.limit));
