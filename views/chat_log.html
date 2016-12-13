@@ -21,7 +21,7 @@
 			<div class="message_template">
 			
 			<li class="row message {{msg.sender | isMe}}" data-id="{{msg.msg_id}}" v-for="msg in msgs" track-by="msg_id">
-				<div class="avatar"></div>
+				<div class="avatar-color-{{msg.sender | colorNum}} avatar">{{msg.sender | thumbName}}</div>
 				<div class="text_wrapper">
 				
 				<span class="nickname col-xs-6 nick-color-{{msg.sender | colorNum}}">{{msg.sender}}</span>
@@ -141,8 +141,22 @@ $(document).ready(() => {
 		return getColorNum_;
 	}();
 	
-	Vue.filter('colorNum', function(text){
+	Vue.filter('colorNum', (text) => {
 		return getColorNum(text);
+	});
+	
+	Vue.filter('thumbName', (text) => {
+		let words = text.split(' ');
+		if (words.length === 1) {
+			let U = Array.from(words[0]).filter(c => (c.toUpperCase() == c && !('0' <= c && c <= '9')));
+			if (U.length === 0)
+				return words[0][0].toUpperCase();
+			if (U.length === 1)
+				return U[0];
+			return U[0] + U[1];
+		}
+		else
+			return words[0][0].toUpperCase() + words[1][0].toUpperCase();
 	});
 	
 	//Vue.config.delimiters = ['{@','@}'];
@@ -267,8 +281,9 @@ $(document).ready(() => {
 		ws.onmessage = (ev) => {
 			console.log(ev.data);
 			let msg = JSON.parse(ev.data);
+			if (msg.room !== '{{room}}')
+				return;
 			new_message(msg);
-			
 			
 			var m = $messages[0];
 			console.log(m.scrollHeight, m.scrollTop, m.clientHeight);
@@ -454,6 +469,7 @@ ul#logs li img.thumbnail.chatroom-sticker {
 	border: none;
 }
 {% include "nickcolors.css" %}
+{% include "avatarcolors.css" %}
 #footer {
 	height: 30px;
 }
@@ -560,7 +576,7 @@ body {
   opacity: 1;
 }
 .messages .message.left .avatar {
-  background-color: #f5886e;
+  //background-color: #f5886e;
   float: left;
 }
 .messages .message.left .text_wrapper {
@@ -575,7 +591,7 @@ body {
   color: #c48843;
 }
 .messages .message.right .avatar {
-  background-color: #fdbf68;
+  //background-color: #fdbf68;
   float: right;
 }
 .messages .message.right .text_wrapper {
@@ -598,6 +614,11 @@ body {
   height: 60px;
   border-radius: 50%;
   display: inline-block;
+  text-align: center;
+  line-height: 60px;
+  color: whitesmoke;
+  font-size: large;
+  font-weight: 500;
 }
 .messages .message .text_wrapper {
   display: inline-block;
