@@ -86,7 +86,7 @@ module.exports.uploadHandler = function *() {
 	let uploaddir = path.join(__dirname, '..', 'public', config.uploaddir);
 	while ((part = yield parts)) {
 		//console.log(part);
-		let randname = Math.random().toString();
+		let randname = Math.random().toString().split('.').pop() + part.filename;
 		let stream = fs.createWriteStream(path.join(uploaddir, randname));
 		files.push(path.join(config.uploaddir, randname));
 		console.log(part.filename, part.mime, stream.path);

@@ -46,7 +46,12 @@ function *download_file_wget(file_url) {
 				file.write(data);
 				file.end();
 				file.on('finish', () => {
-					resolve([ 'http://10.131.238.237:3000/uploads/' + file_name, file_name_origin ]);
+					/*
+					 * Since We do not have a static and constant IP address
+					 * or we do not have a long term VPS, so can anyone come up
+					 * some ideas to address this issue?
+					 */
+					resolve([ config.baseurl + '/uploads/' + file_name, file_name_origin ]);
 				});
 			});
 		}).on('error', (err) => {
@@ -54,15 +59,6 @@ function *download_file_wget(file_url) {
 			reject(err);
 		}); 
 	});
-	/*
-	let wget = 'wget ' + file_url + ' -O ' + downloaddir;
-	//console.log(window.location.origin);
-	let child = exec(wget, function(err, stdout, stderr) {
-		if (err) throw err;
-		else console.log(file_name + ' downloaded to ' + downloaddir);
-	});
-	return [ 'http://10.131.238.237:3000/uploads/' + file_name, file_name_origin ];
-	*/
 };
 
 
