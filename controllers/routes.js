@@ -1,6 +1,10 @@
 'use strict';
 const views = require('co-views');
 const parse = require('co-body');
+const busboy = require('co-busboy');
+const os = require('os');
+const fs = require('fs');
+const path = require('path');
 const querystring = require('querystring');
 const Messages = require('../models/messages');
 const config = require('../config');
@@ -15,7 +19,7 @@ function getDate() {
 
 module.exports.home = function *home(ctx) {
 	let room = config.default_room;
-	let url = `/${room}/today`;
+	let url = `/dogchamber/${room}/today`;
 	this.redirect(url);
 };
 
@@ -24,31 +28,19 @@ module.exports.chatLogHandler = function *(room, date) {
 	if (date === 'today')
 		date = getDate();
 	console.log(date);
-	let cond = {'date': date}
+	let cond = {'room': room};
+	if (date !== 'any')cond['date'] = date;
 	if (query.last)
 		cond['msg_id'] = {'$lt': Number(query.last)};
-	this.body = yield Messages.get(cond, Number(query.limit));
+	this.body = yield (yield Messages).get(cond, Number(query.limit));
 }
 
-// TODO update cache
-let datesCached = false;
-let datesCache = [];
 function *fetchDates() {
-	if (datesCached)
-		return datesCache;
-	datesCached = true;
-	datesCache = yield Messages.distinct('date');
-	return datesCache;
+	return yield (yield Messages).distinct('date');
 }
 
-let roomsCached = false;
-let roomsCache = [];
 function *fetchRooms() {
-	if (roomsCached)
-		return roomsCache;
-	roomsCached = true;
-	roomsCache = yield Messages.distinct('room');
-	return roomsCache;
+	return yield (yield Messages).distinct('room');
 }
 
 function *getNextID(room, date) {
@@ -57,17 +49,19 @@ function *getNextID(room, date) {
 		'date': date
 	}, 'msg_id');
 	// check msg.length > 0
+	if (!msg.length)
+		return 0;
 	return msg[0].msg_id;
 }
 
 module.exports.chatHandler = function *(room, date) {
-	let enable_ws = date === 'today';
+	let enable_ws = date === 'today' || date === getDate();
 	if (date === 'today')
 		date = getDate();
 
-	/* fetch dates */
+	/* fetch distinct dates */
 	let dates = yield fetchDates();
-	/* fetch rooms */
+	/* fetch distinct rooms */
 	let rooms = yield fetchRooms();
 	console.log(rooms);
 	//let nextID = yield getNextID(room, date);
@@ -83,6 +77,25 @@ module.exports.chatHandler = function *(room, date) {
 		//'nextID': nextID,
 		'config': config
 	});
+}
+
+module.exports.uploadHandler = function *() {
+	let parts = busboy(this, {autoFields: true});
+	let part;
+	let files = [];
+	let uploaddir = path.join(__dirname, '..', 'public', config.uploaddir);
+	while ((part = yield parts)) {
+		//console.log(part);
+		let randname = Math.random().toString().split('.').pop() + part.filename;
+		let stream = fs.createWriteStream(path.join(uploaddir, randname));
+		files.push(path.join(config.uploaddir, randname));
+		console.log(part.filename, part.mime, stream.path);
+		part.pipe(stream);
+	}
+	this.status = 200;
+	this.body = {
+		files: files
+	};
 }
 
 // vim: ts=4 st=4 sw=4

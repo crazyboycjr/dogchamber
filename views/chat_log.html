@@ -3,34 +3,47 @@
 {% block content %}
 {% include "navbar.html" %}
 
+<div class="chat_window">
+
 <div class="container" id="chatlog">
 <div class="row">
 	<div class="col-md-12">
-		<div class="text-center" v-show="!loaded">
-			<h3><i class="glyphicon glyphicon-refresh"></i> Loading ...</h3>
-		</div>
-		<!--TODO change the default fetchMore limit-->
-		<div class="text-center" v-show="(loaded && startID !== 0)">
-			<span class="btn btn-success" @click="fetchMore(1)">Load More</span>
-		</div>
+
 		{% raw %}
-		<ul id="logs" v-show="loaded">
-			<li class="row" data-id="{{msg.msg_id}}" v-for="msg in msgs" track-by="msg_id">
+		<ul id="logs" class="messages" v-show="loaded">
+			<div class="text-center" v-show="!loaded">
+				<h3><i class="glyphicon glyphicon-refresh"></i> Loading ...</h3>
+			</div>
+			<div class="text-center" v-show="(loaded && startID !== 0)">
+				<span class="btn btn-success" @click="fetchMore">Load More</span>
+			</div>
+			
+			<div class="message_template">
+			
+			<li class="row message {{msg.sender | isMe}}" data-id="{{msg.msg_id}}" v-for="msg in msgs" track-by="msg_id">
+				<div class="avatar-color-{{msg.sender | colorNum}} avatar">{{msg.sender | thumbName}}</div>
+				<div class="text_wrapper">
+				
 				<span class="nickname col-xs-6 nick-color-{{msg.sender | colorNum}}">{{msg.sender}}</span>
 				<span class="time col-xs-6 text-right">{{msg.time}}</span>
-				<span class="col-xs-12">
+				<span class="col-xs-12 text">
 					<span class="content" data-msg-type="{{msg.mtype}}">
 						<span v-if="msg.mtype === 'text'">{{{msg.content | polish}}}</span>
-						<img />
-						<audio /></audio>
-						<video /></video>
-						<video /></video>
+						<span v-if="msg.mtype === 'document'">{{{msg.content | polish | downloadable (msg.media_url)}}}</span>
+						<img v-if="(msg.mtype === 'photo' || msg.mtype === 'sticker' || msg.mtype === 'image')" class="thumbnail chatroom-{{msg.mtype}}" src="" :src="msg.media_url" @load="resrcLoaded"/>
+						<audio v-if="msg.mtype === 'audio'" class="chatroom-audio" controls><source src='' :src="msg.media_url" /></audio>
+						<video v-if="msg.mtype === 'animation'" class="chatroom-video chatroom-animation" autoplay loop muted><source srr='' :src="msg.media_url" /></video>
+						<video v-if="msg.mtype === 'video'" class="chatroom-video" controls><source src='' :src="msg.media_url" /></video>
 					</span>
 				</span>
 				<span class="msg-channel col-xs-12 text-right">
 					via {{msg.channel}}
 				</span>
+				
+				</div>
 			</li>
+			
+			</div>
 		</ul>
 		{% endraw %}
 	</div>
@@ -38,7 +51,7 @@
 </div>
 
 <div id="chatbar">
-<div class="container">
+<div class="container bottom_wrapper">
 	<div class="join-chat" v-show="!nickname">
 		<form class="form-inline" @submit="setNickname">
 			<div class="form-group">
@@ -49,34 +62,68 @@
 		</form>
 	</div>
 	<div class="send-text" v-show="nickname">
-		<form @submit="sendMsg">
+		<form @submit.prevent="sendMsg">
 			<div class="form-group">
 				<label class="sr-only" for="my-msg-text"></label>
-				<div class="input-group">
-					{% raw %}
-					<span class="input-group-addon">{{nickname}}</span>
-					{% endraw %}
-					<input type="text" class="form-control" v-model="msg_text" />
+				<div>		
+					
+					<div class="message_input_wrapper">
+
+					<input type="text" class="message_input" v-model.trim="msg_text" />
+					</div>
+					<div class="send_message">
+						<div class="icon"></div>
+						<span class="text" @click="sendMsg" :disabled="(sendLock||!msg_text.length||msg_text.length>10000)"> Send </span>
+					</div>
 				</div>
 			</div>
-			<span class="btn btn-primary" @click="sendMsg" :disabled="(sendLock||!msg_text.length)"> Send </span>
-			<a href="#" class="btn btn-default"> Picture </a>
-			<span class="btn btn-default" @click="unSetNickname"> Reset Nickname </span>
+			
+			{% raw %}
+			<label class="label label-default" style="font-size:100%;"><i class="glyphicon glyphicon-user"></i> {{nickname}}</label>
+			{% endraw %}
+			<span class="btn btn-default" style="border-radius: 50px;" @click="unSetNickname"> Reset Nickname </span>
+			
+			<a class="btn btn-default btn-upload" data-toggle="modal" data-target="#upload-modal" @click="setMedia"><i class="glyphicon glyphicon-picture"></i> Media </a>
+			<a class="btn btn-default btn-upload" data-toggle="modal" data-target="#upload-modal" @click="unSetMedia"><i class="glyphicon glyphicon-file"></i> Files &nbsp; </a>
 		</form>
 	</div>
+	<!--
 	<div id="footer">
 		<div class="text-center">
 			<span>Thanks to TUNA and <a href="https://github.com/tuna/fishroom">Fishroom</a> </span>|
-			<span>Licensed under MIT</span>
+			<span>Licensed under AGPL</span>
 		</div>
 	</div>
+	-->
 </div>
 </div>
 
+</div><!--chat_window-->
+<form id="uploadForm">
+	<div class="modal fade" id="upload-modal" tabindex="-1" role="dialog" aria-labelledby="modal-label" aria-hidden="true">
+		<div class="modal-dialog modal-lg" role="document">
+			<div class="modal-content">
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+					<h4 class="modal-title" id="modal-label">选择文件上传</h4>
+				</div>
+				<div class="modal-body" v-show="!isMedia">
+					<input id="uploadfile" type="file" class="file-loading" multiple data-preview-file-type="any">
+				</div>
+				<div class="modal-body" v-show="isMedia">
+					<input id="uploadmedia" type="file" class="file-loading" multiple data-preview-file-type="any">
+				</div>
+			</div>
+		</div>
+	</div>
+</form>
 {% endblock %}
 
 {% block scripts %}
+<!--
 <script src="//cdn.bootcss.com/blueimp-md5/1.1.1/js/md5.min.js"></script>
+-->
+<script src="/scripts/md5.min.js"></script>
 
 <script>
 $(document).ready(() => {
@@ -94,12 +141,26 @@ $(document).ready(() => {
 		return getColorNum_;
 	}();
 	
-	Vue.filter('colorNum', function(text){
+	Vue.filter('colorNum', (text) => {
 		return getColorNum(text);
 	});
 	
+	Vue.filter('thumbName', (text) => {
+		let words = text.split(' ');
+		if (words.length === 1) {
+			let U = Array.from(words[0]).filter(c => (c.toUpperCase() == c && !('0' <= c && c <= '9')));
+			if (U.length === 0)
+				return words[0][0].toUpperCase();
+			if (U.length === 1)
+				return U[0];
+			return U[0] + U[1];
+		}
+		else
+			return words[0][0].toUpperCase() + words[1][0].toUpperCase();
+	});
+	
 	//Vue.config.delimiters = ['{@','@}'];
-	Vue.filter("polish", (text) => {
+	Vue.filter('polish', (text) => {
 		let urlRe = /https?:\/\/[^\s]+/g;
 		return emojione.toImage(text.replace(/</g, '&lt;')
 									.replace(/>/g, '&gt;')
@@ -108,12 +169,20 @@ $(document).ready(() => {
 									.replace(urlRe, '<a href="$1">$1</a>'))
 	});
 
-	function fetchLog(limit, lastID) {
-		let url = window.location.origin + '/log' + window.location.pathname;
+	Vue.filter('downloadable', (text, media_url) => {
+		return `${text}<a href="${media_url}"><i class="glyphicon glyphicon-download btn-lg"></i></a>`
+	});
+
+	var $messages = $('.messages');
+
+	function fetchLog(limit, lastID, shouldScroll, shouldDate) {
+		let url = window.location.origin + '/log' + '/{{ room }}';
+		url += shouldDate ? '/{{ date }}' : '/any';
 		let params = {
 			'limit': limit ? limit : 10,
 			'last': lastID ? lastID : ''
 		};
+		console.log(params);
 		params = $.param(params);
 		if (params)
 			url += '?' + params;
@@ -129,6 +198,19 @@ $(document).ready(() => {
 			logData.msgs = msgs.concat(logData.msgs);
 			console.log(logData.msgs);
 			logData.loaded = true;
+			
+			window.shouldScroll = shouldScroll ? true : false;
+			/*
+			let m = $messages[0];
+			if (shouldScroll) {
+				(() => {
+					window.scrollTo(0, document.body.scrollHeight);
+				}, 300)
+				window.shouldScroll = true;
+			} else {
+				window.shouldScroll = false;
+			}
+			*/
 		});
 	}
 	
@@ -148,12 +230,19 @@ $(document).ready(() => {
 		el: '#chatlog',
 		data: logData,
 		ready: () => {
-			fetchLog(42);
+			fetchLog(42, null, true, true);
+			setTimeout(() => {
+				$messages.animate({ scrollTop: $messages.prop('scrollHeight') }, 300)
+			}, 1000);
 		},
 		methods: {
-			fetchMore: () => {
-				console.log('this.startID', this.startID);
-				fetchLog(42, this.startID);
+			fetchMore: (ev, limit) => {
+				console.log('this.startID', logData.startID);
+				fetchLog(limit ? limit : 10, logData.startID, false);
+			},
+			resrcLoaded: (ev) => {
+				/*window.scrollTo(0, document.body.scrollHeight);*/
+				//$messages.animate({ scrollTop: $messages.prop('scrollHeight') }, 300);
 			}
 		}
 	});
@@ -163,13 +252,19 @@ $(document).ready(() => {
 		nickname_i: '',
 		msg_text: '',
 		sendLock: false,
+		isMedia: true,
 		ws: null
 	};
+	
+	Vue.filter('isMe', (sender) => {
+		return sender === chatData.nickname ? 'right' : 'left';
+	});
+	
 	
 	var sendMsg = function() {}
 	function createWebSocket() {
 		let wscheme = document.location.protocol.replace(/^http/g, 'ws'),
-			wshost = '{{ config.websocket.host }}',
+			wshost = document.location.hostname,
 			wsport = {{ config.websocket.port }},
 			wsurl = wscheme + '//' + wshost + ':' + wsport,
 			ws = new WebSocket(wsurl);
@@ -186,8 +281,15 @@ $(document).ready(() => {
 		ws.onmessage = (ev) => {
 			console.log(ev.data);
 			let msg = JSON.parse(ev.data);
+			if (msg.room !== '{{room}}')
+				return;
 			new_message(msg);
-			// handle scroll logic
+			
+			var m = $messages[0];
+			console.log(m.scrollHeight, m.scrollTop, m.clientHeight);
+			if (m.scrollHeight - (m.scrollTop + m.clientHeight) < 400) {
+				$messages.animate({ scrollTop: $messages.prop('scrollHeight') }, 300);
+			}
 		}
 		{% endif %}
 		
@@ -202,9 +304,11 @@ $(document).ready(() => {
 			};
 			console.log(msg);
 			chatData.ws.send(JSON.stringify(msg));
+			chatData.msg_text = '';
 			setTimeout(() => {
 				chatData.sendLock = false;
 			}, 500);
+			$messages.animate({ scrollTop: $messages.prop('scrollHeight') }, 300);
 		}
 	
 		ws.onclose = (ev) => {
@@ -216,6 +320,10 @@ $(document).ready(() => {
 	}
 	
 	createWebSocket();
+	
+	let uploadData = {
+		isMedia: true
+	};
 	
 	new Vue({
 		el: '#chatbar',
@@ -233,65 +341,135 @@ $(document).ready(() => {
 				ev.preventDefault();
 				chatData.nickname = '';
 			},
-			sendMsg: sendMsg
+			sendMsg: sendMsg,
+			setMedia: (ev) => {
+				uploadData.isMedia = true;
+				ev.preventDefault();
+			},
+			unSetMedia: (ev) => {
+				uploadData.isMedia = false;
+				ev.preventDefault();
+			}
 		}
 	});
 	
+	new Vue({
+		el: '#uploadForm',
+		data: uploadData
+	});
+
+	let uploadOption = {
+		language: 'zh',
+		uploadUrl: '/upload/file',
+		//allowedFileExtensions: ['jpg', 'gif', 'png'], //No limit
+		showUpload: true,
+		showCaption: false,
+		browseClass: "btn btn-primary",
+		maxFileSize: 10240, // 10MB
+		maxFileCount: 10,
+		enctype: 'multipart/form-data',
+		validateInitialCount: true,
+		previewFileIcon: '<i class="glyphicon glyphicon-king"></i>',
+		msgFilesTooMany: '一次上传文件数量不要超过10个'
+	};
+	
+	$("#uploadfile").fileinput(uploadOption);
+	$("#uploadmedia").fileinput(uploadOption);
+	
+	function finishUpload(ev, data, previewId, index, isMedia) {
+		console.log('file upload finish.');
+		console.log(ev, data, previewId, index);
+		let filepath = data.response.files[0];
+		let file = data.files[index];
+		console.log(file.type);
+		let msg = {
+			'media_url': window.location.origin + filepath,
+			'mtype': isMedia ? file.type.split('/')[0] : 'document',
+			'sender': chatData.nickname,
+			'content': file.name,
+			'room': '{{room}}'
+		};
+		console.log(msg);
+		chatData.ws.send(JSON.stringify(msg));
+	}
+	
+	$('#uploadfile').on('fileuploaded', (ev, data, previewId, index) => {
+		finishUpload(ev, data, previewId, index, false);
+	});
+	
+	$('#uploadmedia').on('fileuploaded', (ev, data, previewId, index) => {
+		finishUpload(ev, data, previewId, index, true);
+	});
 });
 </script>
 {% endblock %}
 
 {% block css %}
 <style>
+.row {
+	margin-right: 0;
+	margin-left: 0;
+}
+
 .container {
 	max-width: 800px;
 }
 #chatlog {
-	padding-top: 80px;
+	padding-top: 60px;
 }
 ul#logs {
 	font-size: 14px;
 	list-style-type: none;
 	font-family: monospace;
 	padding-left: 0;
-	margin-bottom: 240px;
+	padding-bottom: 80px;
+	margin-bottom: 80px;
 }
-ul#logs > li {
+ul#logs li {
 	padding-top: 7px;
 	padding-bottom: 7px;
 	line-height: 1.33;
-	border-top: 1px solid #EEE;
+	//border-top: 1px solid #EEE;
 }
-ul#logs > li:hover {
+ul#logs li:hover {
 	background-color: #fafafa;
 }
-ul#logs > li:first-child {
+ul#logs li:first-child {
 	border-top: none;
 }
-ul#logs > li > span.time {
+ul#logs li span.time {
 	color: #888;
 }
-ul#logs > li > span.msg-channel {
+ul#logs li span.msg-channel {
 	color: #888;
 	font-size: .9em;
 }
-ul#logs > li span.content {
+ul#logs li span.content {
 	font-family: 'Source Han Sans CN', 'WenQuanYi Zen Hei', 'WenQuanYi Micro Hei', 'Heiti SC', 'Hiragino Sans GB', 'STHeiti', '微软雅黑', sans-serif;
 	min-height: 20px;
 }
-ul#logs > li img.thumbnail {
+ul#logs li img.thumbnail {
 	margin-top: 5px;
 	max-height: 300px;
 	max-width: 100%;
 }
-ul#logs > li audio.chatroom-audio, ul#logs > li video.chatroom-video  {
+ul#logs li audio.chatroom-audio {
+	margin-top: 5px;
+	width: 100%;
+	display: block;
+}
+ul#logs li video.chatroom-video  {
+	height: 100%;
+	width: 100%;
+	display: block;
 	margin-top: 5px;
 }
-ul#logs > li img.thumbnail.chatroom-sticker {
+ul#logs li img.thumbnail.chatroom-sticker {
 	max-width: 200px;
 	border: none;
 }
 {% include "nickcolors.css" %}
+{% include "avatarcolors.css" %}
 #footer {
 	height: 30px;
 }
@@ -320,5 +498,218 @@ ul#logs > li img.thumbnail.chatroom-sticker {
 	padding-top: 15px;
 	border-top: solid 1px #eee;
 }
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background-color: #edeff2;
+  font-family: "Calibri", "Roboto", sans-serif;
+}
+
+.chat_window {
+  position: absolute;
+  width: calc(100% - 20px);
+  max-width: 80%;
+  height: 100%;
+  border-radius: 10px;
+  background-color: #fff;
+  left: 50%;
+  top: 50%;
+  transform: translateX(-50%) translateY(-50%);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+  background-color: #f8f8f8;
+  overflow: hidden;
+}
+
+.top_menu {
+  background-color: #fff;
+  width: 100%;
+  padding: 20px 0 15px;
+  box-shadow: 0 1px 30px rgba(0, 0, 0, 0.1);
+}
+.top_menu .buttons {
+  margin: 3px 0 0 20px;
+  position: absolute;
+}
+.top_menu .buttons .button {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 10px;
+  position: relative;
+}
+.top_menu .buttons .button.close {
+  background-color: #f5886e;
+}
+.top_menu .buttons .button.minimize {
+  background-color: #fdbf68;
+}
+.top_menu .buttons .button.maximize {
+  background-color: #a3d063;
+}
+.top_menu .title {
+  text-align: center;
+  color: #bcbdc0;
+  font-size: 20px;
+}
+
+.messages {
+  position: relative;
+  list-style: none;
+  padding: 0px 10px 0 10px;
+  margin: 0;
+  height: 700px;
+  overflow: auto;
+}
+.messages::-webkit-scrollbar {
+    display: none;
+}
+
+.messages .message {
+  clear: both;
+  overflow: hidden;
+  margin-bottom: 20px;
+  transition: all 0.5s linear;
+  opacity: 1;
+}
+.messages .message.left .avatar {
+  //background-color: #f5886e;
+  float: left;
+}
+.messages .message.left .text_wrapper {
+  background-color: #ffe6cb;
+  margin-left: 20px;
+}
+.messages .message.left .text_wrapper::after, .messages .message.left .text_wrapper::before {
+  right: 100%;
+  border-right-color: #ffe6cb;
+}
+.messages .message.left .text {
+  color: #c48843;
+}
+.messages .message.right .avatar {
+  //background-color: #fdbf68;
+  float: right;
+}
+.messages .message.right .text_wrapper {
+  background-color: #c7eafc;
+  margin-right: 20px;
+  float: right;
+}
+.messages .message.right .text_wrapper::after, .messages .message.right .text_wrapper::before {
+  left: 100%;
+  border-left-color: #c7eafc;
+}
+.messages .message.right .text {
+  color: #45829b;
+}
+.messages .message.appeared {
+  opacity: 1;
+}
+.messages .message .avatar {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  display: inline-block;
+  text-align: center;
+  line-height: 60px;
+  color: whitesmoke;
+  font-size: large;
+  font-weight: 500;
+}
+.messages .message .text_wrapper {
+  display: inline-block;
+  padding: 20px;
+  border-radius: 6px;
+  width: calc(100% - 85px);
+  min-width: 100px;
+  position: relative;
+}
+.messages .message .text_wrapper::after, .messages .message .text_wrapper:before {
+  top: 18px;
+  border: solid transparent;
+  content: " ";
+  height: 0;
+  width: 0;
+  position: absolute;
+  pointer-events: none;
+}
+.messages .message .text_wrapper::after {
+  border-width: 13px;
+  margin-top: 0px;
+}
+.messages .message .text_wrapper::before {
+  border-width: 15px;
+  margin-top: -2px;
+}
+.messages .message .text_wrapper .text {
+  font-size: 18px;
+  font-weight: 300;
+}
+
+.bottom_wrapper {
+  position: relative;
+  width: 100%;
+  background-color: #fff;
+  padding: 20px 20px;
+  //position: absolute;
+  bottom: 0;
+}
+.bottom_wrapper .message_input_wrapper {
+  display: inline-block;
+  height: 50px;
+  border-radius: 25px;
+  border: 1px solid #bcbdc0;
+  width: calc(100% - 160px);
+  position: relative;
+  padding: 0 20px;
+}
+.bottom_wrapper .message_input_wrapper .message_input {
+  border: none;
+  height: 100%;
+  box-sizing: border-box;
+  width: 100px;
+  width: calc(100% - 40px);
+  position: absolute;
+  outline-width: 0;
+  color: gray;
+}
+.bottom_wrapper .send_message {
+  width: 140px;
+  height: 50px;
+  display: inline-block;
+  border-radius: 50px;
+  background-color: #a3d063;
+  border: 2px solid #a3d063;
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.2s linear;
+  text-align: center;
+  float: right;
+}
+.bottom_wrapper .send_message:hover {
+  color: #a3d063;
+  background-color: #fff;
+}
+.bottom_wrapper .send_message .text {
+  font-size: 18px;
+  font-weight: 300;
+  display: inline-block;
+  line-height: 48px;
+}
+
+.message_template {
+  //display: none;
+}
+
+.btn-upload {
+	float:right;
+	border-radius: 50px;
+	margin: 2px;
+}
+
 </style>
 {% endblock %}

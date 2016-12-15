@@ -4,7 +4,9 @@ const wsconfig = require('../config.json').websocket;
 const WebSocketServer = require('../lib/WebSocketServer');
 const Log = require('../lib/log');
 const co = require('co');
-const Messages = require('../models/messages');
+const PMessages = require('../models/messages');
+const sendToBot_msg = require('./bot_telegram').sendToBot_msg;
+const sendToBot_media = require('./bot_telegram').sendToBot_media;
 
 function getDate() {
 	return (new Date).toISOString().slice(0, 10); // like 2016-12-07
@@ -14,17 +16,10 @@ function getTime() {
 	return (new Date).toTimeString().slice(0, 8); // like 18:21:40
 }
 
-function *getMaxID(room) {
-	let msg = yield Messages.getMax({
-		'room': room
-	}, 'msg_id');
-	return msg[0].msg_id;
-}
-
 function startWsServer() {
 
 	let ws = new WebSocketServer({host: wsconfig.host, port: wsconfig.port});
-
+	
 	ws.on('message', (data) => {
 		console.log(data);
 		console.log(data.toString());
@@ -32,10 +27,13 @@ function startWsServer() {
 		
 		let date = getDate(),
 			time = getTime();
-		
-		//FIXME data race here XXX
-		Messages.getMax({'room': msg.room}, 'msg_id').then((msgs) => {
-			let msg_id = msgs[0].msg_id + 1;
+
+		co(function *() {
+			let Messages = yield PMessages;
+			let ret = yield Messages.getNextID(msg.room);
+			console.log(ret);
+			let msg_id = ret.value.seq;
+			console.log(msg_id);
 			msg = Object.assign({
 				'sender': '',
 				'botmsg': false,
@@ -51,13 +49,22 @@ function startWsServer() {
 				'reply_text': ''
 			}, msg);
 			console.log(msg);
-			Messages.insert(msg);
+			yield Messages.insert(msg);
 			ws.broadcast(JSON.stringify(msg));
-		}, (err) => {
+			if (msg.mtype == 'text') {
+				sendToBot_msg(msg);
+			}
+			if (msg.mtype == 'image' || msg.mtype == 'photo' ||  msg.mtype == 'video' || msg.mtype == 'sticker' || msg.mtype ==  'audio') {
+				sendToBot_media(msg);
+			}
+		}).then(() => {}, (err) => {
 			console.log(err);
 		});
 	});
 	ws.on('error', err => Log.log('websocket error', err));
+	return ws;
 }
 
 module.exports = startWsServer;
+
+// vim: ts=4 st=4 sw=4
