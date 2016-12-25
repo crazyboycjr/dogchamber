@@ -31,7 +31,7 @@ $ mongo
 Open your browser and visit http://127.0.0.1:3000/
 
 ## Screenshot
-![](/home/cjr/Developing/dogchamber/dogchamber.png)
+![screenshot](https://github.com/crazyboycjr/dogchamber/blob/master/dogchamber.png)
 
 ## TODO
 - Fix bug of name conflict
