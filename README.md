@@ -3,9 +3,32 @@
 ![node](https://img.shields.io/node/v/gh-badges.svg)
 
 A chatroom for Computer Networks course. Re-implemented WebSocket protocol (server side) based on TCP socket.
+Under heavy development.
+
+## Protocols
+### Data
+```json
+{
+	"msg_id": 2,
+	"sender": "zrz",
+	"botmsg": false,
+	"channel": "web",
+	"content": "Hello, cjr.",
+	"date": "2016-12-06",
+	"time": "17:15:51",
+	"room": "Room506",
+	"mtype": "text",
+	"media_url": null,
+	"reply_to" : "cjr",
+	"reply_text" : "Hello, I'm cjr."
+}
+```
+- channel: Message from web or telegram
+- mtype: MIME-Type range in [text, document, photo, sticker, image, audio, animation, video]. 'document' means the resource is downloadable.
+- media_url: When mtype != 'text', this field refers to the url of the resource
+
 
 ## Build
-
 ### Requirements
 Mongodb
 
