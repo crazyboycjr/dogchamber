@@ -59,9 +59,9 @@ Open your browser and visit http://127.0.0.1:3000/
 ## TODO
 - Fix bug of name conflict
 - Add timestamp and client ip when logging
-- Make the UI adapt windows of different size
+- Make the UI adapt to windows of different size
 - Polish the UI (Bubble box size, Download preview)
 - Implement plugin mechanism
 - File name bug when downloading
-- Complete the WebSocket Protocol
+- Complete the WebSocket Protocol implementation
 - Add favicon
