@@ -5,7 +5,29 @@
 A chatroom for Computer Networks course. Re-implemented WebSocket protocol (server side) based on TCP socket.
 Under heavy development.
 
-## Protocols
+## Protocols and Architecture
+### Basic Architecture
+```
+               +-----------------+
+               |      HTTP       |
+               v                 v
+        +------------+     +------------+
+        |   Browser  |     |   WebUI    |<-+
+        +------------+     +------------+  |
+               |    WebSocket              |
+               +-----------------+         |Data
+                                 v         |
+                           +------------+  |
+                           |            |  |
+                   +------>|SocketServer|--+
+                   |       |    +---+   |
+               Data|       +----|---|---+
+                   |            v   ^
+              +---------+  Data |   | Data +----------+
+              | MongoDB |<------+   +----->| Telegram |
+              +---------+                  +----------+
+```
+
 ### Data
 ```json
 {
