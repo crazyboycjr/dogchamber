@@ -50,8 +50,14 @@ $ mongo
 > db.createCollection('counters')
 > db.counters.insert({'room': 'Chatroom', 'seq': 0})
 ```
-
+Start the app
+```
+node app.js
+```
 Open your browser and visit http://127.0.0.1:3000/
+
+### Notice
+This program will listen on port 3000(HTTP) and 4000(WebSocket) at the same time, so don't forget to close your firewall on both 3000 and 4000.
 
 ## Screenshot
 ![screenshot](https://github.com/crazyboycjr/dogchamber/blob/master/dogchamber.png)
