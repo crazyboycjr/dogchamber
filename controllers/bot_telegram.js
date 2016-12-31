@@ -62,7 +62,7 @@ function *download_file_wget(file_url) {
 };
 
 
-function startBot(ws) {
+function init(ws) {
 
 	bot.on(['text'], (msg, self) => {
 		let date = getDate(),
@@ -209,8 +209,19 @@ function sendToBot_media(msg) {
 	});
 }
 
+function handle(msg) {
+	if (msg.mtype === 'text') {
+		sendToBot_msg(msg);
+	}
+	if (msg.mtype === 'image' || msg.mtype === 'photo' || msg.mtype === 'video'
+		|| msg.mtype === 'sticker' || msg.mtype ===  'audio') {
+		sendToBot_media(msg);
+	}
+}
+
 module.exports = {
-	startBot: startBot,
+	init: init,
+	handle: handle,
 	sendToBot_msg: sendToBot_msg,
 	sendToBot_media: sendToBot_media,
 }

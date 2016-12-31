@@ -81,6 +81,14 @@ Open your browser and visit http://127.0.0.1:3000/
 ### Notice
 This program will listen on port 3000(HTTP) and 4000(WebSocket) at the same time, so don't forget to close your firewall on both 3000 and 4000.
 
+## Plugin
+We can add plugins by implementing two interfaces
+```
+init(ws) // param: Class WebSocketServer
+handle(msg) // param: a message Object
+```
+and add it to `config.json`.
+
 ## Screenshot
 ![screenshot](https://github.com/crazyboycjr/dogchamber/blob/master/dogchamber.png)
 

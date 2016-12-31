@@ -5,8 +5,7 @@ const WebSocketServer = require('../lib/WebSocketServer');
 const Log = require('../lib/log');
 const co = require('co');
 const PMessages = require('../models/messages');
-const sendToBot_msg = require('./bot_telegram').sendToBot_msg;
-const sendToBot_media = require('./bot_telegram').sendToBot_media;
+const config = require('../config.json');
 
 function getDate() {
 	return (new Date).toISOString().slice(0, 10); // like 2016-12-07
@@ -16,10 +15,27 @@ function getTime() {
 	return (new Date).toTimeString().slice(0, 8); // like 18:21:40
 }
 
+let plugins = new Set();
+
+function loadPlugin(ws) {
+	for (let plugin of config.plugins) {
+		let p = require('./' + plugin);
+		p.init(ws);
+		plugins.add(p);
+	}
+}
+
+function runPlugin(msg) {
+	for (let plugin of plugins) {
+		plugin.handle(msg);
+	}
+}
+
 function startWsServer() {
 
 	let ws = new WebSocketServer({host: wsconfig.host, port: wsconfig.port});
-	
+	loadPlugin(ws);
+
 	ws.on('message', (data) => {
 		console.log(data);
 		console.log(data.toString());
@@ -51,12 +67,9 @@ function startWsServer() {
 			console.log(msg);
 			yield Messages.insert(msg);
 			ws.broadcast(JSON.stringify(msg));
-			if (msg.mtype == 'text') {
-				sendToBot_msg(msg);
-			}
-			if (msg.mtype == 'image' || msg.mtype == 'photo' ||  msg.mtype == 'video' || msg.mtype == 'sticker' || msg.mtype ==  'audio') {
-				sendToBot_media(msg);
-			}
+
+			runPlugin(msg);
+
 		}).then(() => {}, (err) => {
 			console.log(err);
 		});

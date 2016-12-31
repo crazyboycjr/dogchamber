@@ -21,8 +21,7 @@ app.use(route.post('/upload/file', routes.uploadHandler));
 // Serve static files
 app.use(serve(path.join(__dirname, 'public')));
 
-let ws = startWsServer();
-startBot(ws);
+startWsServer();
 // Compress
 app.use(compress());
 

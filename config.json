@@ -18,6 +18,10 @@
 
 	"botGroup": -170810768,
 
-	"uploaddir": "/uploads"
+	"uploaddir": "/uploads",
+
+	"plugins": [
+		"bot_telegram"
+	]
 
 }
