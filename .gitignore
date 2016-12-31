@@ -24,3 +24,5 @@ public/uploads/
 *.orig
 *.rej
 
+# IDE
+.idea/
